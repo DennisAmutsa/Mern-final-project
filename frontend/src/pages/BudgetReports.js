@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { API_BASE_URL } from '../config/api';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A020F0', '#FF6384', '#36A2EB', '#FFCE56'];
 
@@ -22,7 +23,7 @@ export default function BudgetReports() {
 
   useEffect(() => {
     fetchBudgets();
-    fetch('/api/departments')
+    fetch(`${API_BASE_URL}/api/departments`)
       .then(res => res.json())
       .then(data => setDepartments(Array.isArray(data) ? data : []));
   }, []);
@@ -30,7 +31,7 @@ export default function BudgetReports() {
   const fetchBudgets = () => {
     setLoading(true);
     const token = localStorage.getItem('token');
-    fetch('/api/budget', {
+    fetch(`${API_BASE_URL}/api/budget`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
@@ -45,7 +46,7 @@ export default function BudgetReports() {
     e.preventDefault();
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('/api/budget', {
+      const res = await fetch(`${API_BASE_URL}/api/budget`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -75,7 +76,7 @@ export default function BudgetReports() {
     e.preventDefault();
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`/api/budget/${editBudget._id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/budget/${editBudget._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -100,7 +101,7 @@ export default function BudgetReports() {
     if (!window.confirm('Delete this budget entry?')) return;
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`/api/budget/${id}`, { method: 'DELETE', headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+      const res = await fetch(`${API_BASE_URL}/api/budget/${id}`, { method: 'DELETE', headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
       if (res.ok) {
         fetchBudgets();
         toast.success('Budget deleted');

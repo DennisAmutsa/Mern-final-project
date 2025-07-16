@@ -3,6 +3,7 @@ import { Plus, Trash2, Edit, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { API_BASE_URL } from '../config/api';
 const PIE_COLORS = ['#0088FE', '#FF8042'];
 
 export default function FinancialReports() {
@@ -30,7 +31,7 @@ export default function FinancialReports() {
   const fetchReports = () => {
     setLoading(true);
     const token = localStorage.getItem('token');
-    fetch('/api/financial-reports', {
+    fetch(`${API_BASE_URL}/api/financial-reports`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
@@ -56,7 +57,7 @@ export default function FinancialReports() {
     const totalsObj = {};
     totals.forEach(t => { if (t.key && t.value !== '') totalsObj[t.key] = Number(t.value); });
     try {
-      const res = await fetch('/api/financial-reports', {
+      const res = await fetch(`${API_BASE_URL}/api/financial-reports`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -82,7 +83,7 @@ export default function FinancialReports() {
     if (!window.confirm('Delete this report?')) return;
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`/api/financial-reports/${id}`, { 
+      const res = await fetch(`${API_BASE_URL}/api/financial-reports/${id}`, { 
         method: 'DELETE',
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {})

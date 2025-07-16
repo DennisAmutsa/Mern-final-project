@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { API_BASE_URL } from '../config/api';
 
 export default function BillingOverview() {
   const [bills, setBills] = useState([]);
@@ -23,13 +24,13 @@ export default function BillingOverview() {
 
   useEffect(() => {
     fetchBills();
-    fetch('/api/users?roles=user,patient').then(res => res.json()).then(data => setPatients(Array.isArray(data) ? data : []));
+    fetch(`${API_BASE_URL}/api/users?roles=user,patient`).then(res => res.json()).then(data => setPatients(Array.isArray(data) ? data : []));
   }, []);
 
   const fetchBills = () => {
     setLoading(true);
     const token = localStorage.getItem('token');
-    fetch('/api/billing', {
+    fetch(`${API_BASE_URL}/api/billing`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
@@ -44,7 +45,7 @@ export default function BillingOverview() {
     e.preventDefault();
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('/api/billing', {
+      const res = await fetch(`${API_BASE_URL}/api/billing`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -68,7 +69,7 @@ export default function BillingOverview() {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this bill?')) return;
     try {
-      const res = await fetch(`/api/billing/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE_URL}/api/billing/${id}`, { method: 'DELETE' });
       if (res.ok) {
         fetchBills();
         toast.success('Bill deleted');
@@ -85,7 +86,7 @@ export default function BillingOverview() {
   const handleStatusChange = async (billId, newStatus) => {
     if (!window.confirm(`Are you sure you want to change the status to "${newStatus}"?`)) return;
     const token = localStorage.getItem('token');
-    await fetch(`/api/billing/${billId}`, {
+    await fetch(`${API_BASE_URL}/api/billing/${billId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -274,7 +275,7 @@ export default function BillingOverview() {
             <form onSubmit={async e => {
               e.preventDefault();
               try {
-                const res = await fetch(`/api/billing/${editBill._id}`, {
+                const res = await fetch(`${API_BASE_URL}/api/billing/${editBill._id}`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(editBill)
