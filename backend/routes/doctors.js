@@ -13,6 +13,7 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     const { firstName, lastName, email, department, specialization, phone, password } = req.body;
+    const username = req.body.username || email; // fallback to email if username not provided
 
     // Check if email already exists
     const existingUser = await User.findOne({ email });
@@ -29,6 +30,7 @@ router.post('/', authenticateToken, async (req, res) => {
       firstName,
       lastName,
       email,
+      username,
       password: hashedPassword,
       role: 'doctor',
       department,
