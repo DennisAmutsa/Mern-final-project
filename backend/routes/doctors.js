@@ -1,7 +1,59 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
+
+// Create new doctor (Admin only)
+router.post('/', authenticateToken, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can create doctors' });
+    }
+
+    const { firstName, lastName, email, department, specialization, phone, password } = req.body;
+
+    // Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    // Hash password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Create new doctor user
+    const doctor = new User({
+      firstName,
+      lastName,
+      email,
+      password: hashedPassword,
+      role: 'doctor',
+      department,
+      specialization,
+      phone,
+      isActive: true
+    });
+
+    await doctor.save();
+
+    // Return doctor data without password
+    const doctorData = doctor.toObject();
+    delete doctorData.password;
+    delete doctorData.resetPasswordToken;
+    delete doctorData.resetPasswordExpires;
+
+    res.status(201).json({
+      message: 'Doctor created successfully',
+      doctor: doctorData
+    });
+  } catch (error) {
+    console.error('Error creating doctor:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Get all doctors with their schedules
 router.get('/', async (req, res) => {
