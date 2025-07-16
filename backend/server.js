@@ -13,7 +13,7 @@ const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production' 
-      ? "https://mern-final-project-bres.onrender.com"
+      ? ["https://mern-final-project-bres.onrender.com", "https://mern-final-project-g1oj.vercel.app"]
       : "http://localhost:3000",
     methods: ["GET", "POST"]
   }
@@ -55,7 +55,7 @@ global.io = io;
 app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? "https://mern-final-project-bres.onrender.com"
+    ? ["https://mern-final-project-bres.onrender.com", "https://mern-final-project-g1oj.vercel.app"]
     : "http://localhost:3000",
   credentials: true
 }));
