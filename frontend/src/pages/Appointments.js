@@ -3,6 +3,7 @@ import { Calendar, Clock, User, UserCheck, Plus, Search, Filter, AlertTriangle, 
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { API_BASE_URL } from '../config/api';
 
 const Appointments = () => {
   const [appointments, setAppointments] = useState([]);
@@ -20,7 +21,7 @@ const Appointments = () => {
   const isAdmin = user?.role === 'admin';
 
   const fetchAppointments = () => {
-    let url = '/api/appointments';
+    let url = `${API_BASE_URL ? API_BASE_URL + '/api/appointments' : '/api/appointments'}`;
     if (user?.role === 'doctor' && user?._id) {
       url += `?doctor=${user._id}`;
     }

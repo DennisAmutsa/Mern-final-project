@@ -1,10 +1,10 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// API Configuration
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://mern-final-project-bres.onrender.com' 
+  : ''; // Use proxy in development
 
-export const API_URL = API_BASE_URL;
+const WS_BASE_URL = process.env.NODE_ENV === 'production'
+  ? 'https://mern-final-project-bres.onrender.com'
+  : 'http://localhost:5000';
 
-// Configure axios defaults
-import axios from 'axios';
-
-axios.defaults.baseURL = API_BASE_URL;
-
-export default axios; 
+export { API_BASE_URL, WS_BASE_URL }; 

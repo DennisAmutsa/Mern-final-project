@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from '../config/api';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -11,6 +10,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
+import { WS_BASE_URL } from '../config/api';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -100,7 +100,7 @@ const Inventory = () => {
     let socket;
     try {
       import('socket.io-client').then(({ default: io }) => {
-        socket = io(API_URL);
+        socket = io(WS_BASE_URL);
         socketRef.current = socket;
         socket.on('inventory-updated', () => {
           fetchInventory();

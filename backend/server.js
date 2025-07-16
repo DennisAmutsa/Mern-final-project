@@ -5,13 +5,16 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const http = require('http');
 const socketIo = require('socket.io');
+const path = require('path');
 require('dotenv').config({ path: '../config.env' });
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: process.env.NODE_ENV === 'production' 
+      ? "https://mern-final-project-bres.onrender.com"
+      : "http://localhost:3000",
     methods: ["GET", "POST"]
   }
 });
@@ -50,7 +53,12 @@ global.io = io;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? "https://mern-final-project-bres.onrender.com"
+    : "http://localhost:3000",
+  credentials: true
+}));
 app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -101,11 +109,21 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Catch-all route for debugging
-app.use('*', (req, res) => {
-  console.log('404 - Route not found:', req.method, req.originalUrl);
-  res.status(404).json({ error: 'Route not found', method: req.method, url: req.originalUrl });
-});
+// Serve static files from the React app build directory
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../frontend/build')));
+  
+  // Catch-all handler: send back React's index.html file for any non-API routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
+  });
+} else {
+  // Development: catch-all route for debugging
+  app.use('*', (req, res) => {
+    console.log('404 - Route not found:', req.method, req.originalUrl);
+    res.status(404).json({ error: 'Route not found', method: req.method, url: req.originalUrl });
+  });
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -118,4 +136,7 @@ server.listen(PORT, () => {
   console.log(`📊  Good Health and Well-being`);
   console.log(`🔗 API: http://localhost:${PORT}/api`);
   console.log(`🔌 WebSocket server ready for real-time updates`);
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`🌐 Frontend served from: ${path.join(__dirname, '../frontend/build')}`);
+  }
 });

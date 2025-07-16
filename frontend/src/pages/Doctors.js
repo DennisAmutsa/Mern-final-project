@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserCheck } from 'lucide-react';
+import { API_BASE_URL } from '../config/api';
 
 const Doctors = () => {
   const [doctors, setDoctors] = useState([]);
@@ -10,7 +11,7 @@ const Doctors = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch('/api/doctors')
+    fetch(`${API_BASE_URL ? API_BASE_URL + '/api/doctors' : '/api/doctors'}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {

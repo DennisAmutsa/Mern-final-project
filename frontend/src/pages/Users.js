@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users as UsersIcon, UserPlus, Shield, UserCheck, UserX, Edit, Trash2, Search, Filter } from 'lucide-react';
+import { API_BASE_URL } from '../config/api';
 
 const Users = () => {
   const [users, setUsers] = useState([]);
@@ -57,7 +58,7 @@ const Users = () => {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/auth/users', {
+      const response = await fetch(`${API_BASE_URL ? API_BASE_URL + '/api/auth/users' : '/api/auth/users'}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -77,7 +78,7 @@ const Users = () => {
   const handleAssignRole = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/auth/users/${selectedUser._id}/assign-role`, {
+      const response = await fetch(`${API_BASE_URL ? API_BASE_URL + '/api/auth/users/' + selectedUser._id + '/assign-role' : '/api/auth/users/' + selectedUser._id + '/assign-role'}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -100,7 +101,7 @@ const Users = () => {
   const handleAddUser = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/auth/users', {
+      const response = await fetch(`${API_BASE_URL ? API_BASE_URL + '/api/auth/users' : '/api/auth/users'}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -135,7 +136,7 @@ const Users = () => {
   const handleToggleStatus = async (userId, currentStatus) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/auth/users/${userId}/toggle-status`, {
+      const response = await fetch(`${API_BASE_URL ? API_BASE_URL + '/api/auth/users/' + userId + '/toggle-status' : '/api/auth/users/' + userId + '/toggle-status'}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -157,7 +158,7 @@ const Users = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/auth/users/${userId}`, {
+      const response = await fetch(`${API_BASE_URL ? API_BASE_URL + '/api/auth/users/' + userId : '/api/auth/users/' + userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -189,7 +190,7 @@ const Users = () => {
   const handleEditUser = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/auth/users/${selectedUser._id}`, {
+      const response = await fetch(`${API_BASE_URL ? API_BASE_URL + '/api/auth/users/' + selectedUser._id : '/api/auth/users/' + selectedUser._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
