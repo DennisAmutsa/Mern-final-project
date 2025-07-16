@@ -12,9 +12,12 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'production' 
-      ? ["https://mern-final-project-bres.onrender.com", "https://mern-final-project-g1oj.vercel.app"]
-      : "http://localhost:3000",
+    origin: [
+      "http://localhost:3000",
+      "https://mern-final-project-bres.onrender.com", 
+      "https://mern-final-project-g1oj.vercel.app",
+      "https://mern-final-project-g1oj-2q7ho78aa-dennis-projects-a77c1de0.vercel.app"
+    ],
     methods: ["GET", "POST"]
   }
 });
@@ -54,9 +57,12 @@ global.io = io;
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ["https://mern-final-project-bres.onrender.com", "https://mern-final-project-g1oj.vercel.app"]
-    : "http://localhost:3000",
+  origin: [
+    "http://localhost:3000",
+    "https://mern-final-project-bres.onrender.com", 
+    "https://mern-final-project-g1oj.vercel.app",
+    "https://mern-final-project-g1oj-2q7ho78aa-dennis-projects-a77c1de0.vercel.app"
+  ],
   credentials: true
 }));
 app.use(morgan('combined'));
