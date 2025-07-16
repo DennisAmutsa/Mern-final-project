@@ -32,6 +32,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, LineChart as RechartsLineChart, Line, AreaChart, Area } from 'recharts';
+import { API_BASE_URL } from '../config/api';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
@@ -75,7 +76,7 @@ const AdminDashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await axios.get('/api/stats/dashboard');
+      const response = await axios.get(`${API_BASE_URL}/api/stats/dashboard`);
       setStats(response.data);
     } catch (error) {
       toast.error('Failed to fetch dashboard statistics');
@@ -1116,7 +1117,7 @@ const AdminDashboard = () => {
 
   async function addDoctor() {
     try {
-      await axios.post('/api/doctors', doctorForm);
+      await axios.post(`${API_BASE_URL}/api/doctors`, doctorForm);
       toast.success('Doctor added successfully!');
       setShowDoctorModal(false);
       setDoctorForm({ firstName: '', lastName: '', email: '', department: '', specialization: '', phone: '', password: '' });
@@ -1129,7 +1130,7 @@ const AdminDashboard = () => {
 
   async function createDepartment() {
     try {
-      await axios.post('/api/departments', deptForm);
+      await axios.post(`${API_BASE_URL}/api/departments`, deptForm);
       toast.success('Department created successfully!');
       setShowDepartmentModal(false);
       setDeptForm({ name: '', description: '', location: '', phone: '', email: '' });
