@@ -13,10 +13,11 @@ import {
   Wifi,
   WifiOff
 } from 'lucide-react';
-import axios from 'axios';
+import axios from '../config/api';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
+import { API_URL } from '../config/api';
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
@@ -27,7 +28,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     // Initialize WebSocket connection
-    const newSocket = io('http://localhost:5000');
+    const newSocket = io(API_URL);
     setSocket(newSocket);
 
     // Socket event handlers

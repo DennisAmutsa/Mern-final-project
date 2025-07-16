@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { API_URL } from '../config/api';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -99,7 +100,7 @@ const Inventory = () => {
     let socket;
     try {
       import('socket.io-client').then(({ default: io }) => {
-        socket = io('http://localhost:5000');
+        socket = io(API_URL);
         socketRef.current = socket;
         socket.on('inventory-updated', () => {
           fetchInventory();

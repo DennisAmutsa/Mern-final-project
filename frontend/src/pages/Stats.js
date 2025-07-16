@@ -44,9 +44,10 @@ import {
   ScatterChart,
   Scatter
 } from 'recharts';
-import axios from 'axios';
+import axios from '../config/api';
 import toast from 'react-hot-toast';
 import io from 'socket.io-client';
+import { API_URL } from '../config/api';
 
 const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E42', '#EF4444', '#6366F1', '#F472B6', '#FBBF24'];
 
@@ -91,7 +92,7 @@ const Stats = () => {
 
   useEffect(() => {
     // Initialize WebSocket connection
-    const newSocket = io('http://localhost:5000');
+    const newSocket = io(API_URL);
     setSocket(newSocket);
 
     newSocket.on('connect', () => {

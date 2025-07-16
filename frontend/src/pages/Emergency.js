@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, Plus, Clock, User, Activity, Search, Wifi, WifiOff, FileText, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import io from 'socket.io-client';
+import { API_URL } from '../config/api';
 
 const PAGE_SIZE = 10;
 
@@ -58,7 +59,7 @@ const Emergency = () => {
 
   // Initialize WebSocket connection
   useEffect(() => {
-    const newSocket = io('http://localhost:5000');
+    const newSocket = io(API_URL);
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
