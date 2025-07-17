@@ -111,6 +111,15 @@ router.get('/stats', async (req, res) => {
       }
     });
     
+    const resolvedToday = await Appointment.countDocuments({
+      type: 'Emergency',
+      status: 'Completed',
+      appointmentDate: {
+        $gte: new Date().setHours(0, 0, 0, 0),
+        $lt: new Date().setHours(23, 59, 59, 999)
+      }
+    });
+    
     const emergencyTypes = await Appointment.aggregate([
       { $match: { type: 'Emergency' } },
       {
@@ -136,6 +145,7 @@ router.get('/stats', async (req, res) => {
     res.json({
       totalEmergency,
       todayEmergency,
+      resolvedToday,
       emergencyTypes,
       severityStats,
       availableStaff

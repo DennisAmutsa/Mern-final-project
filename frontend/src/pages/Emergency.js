@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, Plus, Clock, User, Activity, Search, Wifi, WifiOff, FileText, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import io from 'socket.io-client';
-import { WS_BASE_URL } from '../config/api';
+import { API_BASE_URL, WS_BASE_URL } from '../config/api';
 
 const PAGE_SIZE = 10;
 
@@ -34,11 +34,40 @@ const Emergency = () => {
   // Fetch emergencies, stats, patients, and doctors
   const fetchAll = () => {
     setLoading(true);
+    const token = localStorage.getItem('token');
     Promise.all([
-      fetch('/api/emergency').then(res => res.json()),
-      fetch('/api/emergency/stats').then(res => res.json()),
-      fetch('/api/patients?limit=1000').then(res => res.json()),
-      fetch('/api/doctors').then(res => res.json())
+      fetch(`${API_BASE_URL}/api/emergency`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      }).then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      }),
+      fetch(`${API_BASE_URL}/api/emergency/stats`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      }).then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      }),
+      fetch(`${API_BASE_URL}/api/patients?limit=1000`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      }).then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      }),
+      fetch(`${API_BASE_URL}/api/doctors`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      }).then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
     ]).then(([cases, statsData, patientsData, doctorsData]) => {
       setEmergencies(Array.isArray(cases) ? cases : []);
       setStats({
@@ -49,6 +78,12 @@ const Emergency = () => {
       });
       setPatients(Array.isArray(patientsData.patients) ? patientsData.patients : (Array.isArray(patientsData) ? patientsData : []));
       setDoctors(Array.isArray(doctorsData.doctors) ? doctorsData.doctors : (Array.isArray(doctorsData) ? doctorsData : []));
+    }).catch((error) => {
+      console.error('Error fetching emergency data:', error);
+      setEmergencies([]);
+      setStats({ totalEmergency: 0, todayEmergency: 0, resolvedToday: 0, availableStaff: 0 });
+      setPatients([]);
+      setDoctors([]);
     }).finally(() => setLoading(false));
   };
 
@@ -87,9 +122,13 @@ const Emergency = () => {
     e.preventDefault();
     setActionLoading(true);
     try {
-      const res = await fetch('/api/emergency', {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/emergency`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(addForm)
       });
       if (res.ok) {
@@ -98,8 +137,12 @@ const Emergency = () => {
         fetchAll();
         toast.success('Emergency case added!');
       } else {
-        toast.error('Failed to add emergency.');
+        const errorData = await res.json().catch(() => ({}));
+        toast.error(errorData.error || 'Failed to add emergency.');
       }
+    } catch (error) {
+      console.error('Error adding emergency:', error);
+      toast.error('Failed to add emergency.');
     } finally {
       setActionLoading(false);
     }
@@ -114,9 +157,13 @@ const Emergency = () => {
     }
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/emergency/${selectedEmergency.patient._id}/status`, {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/emergency/${selectedEmergency.patient._id}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ status: statusForm.status })
       });
       if (res.ok) {
@@ -126,8 +173,12 @@ const Emergency = () => {
         fetchAll();
         toast.success('Status updated!');
       } else {
-        toast.error('Failed to update status.');
+        const errorData = await res.json().catch(() => ({}));
+        toast.error(errorData.error || 'Failed to update status.');
       }
+    } catch (error) {
+      console.error('Error updating emergency status:', error);
+      toast.error('Failed to update status.');
     } finally {
       setActionLoading(false);
     }
