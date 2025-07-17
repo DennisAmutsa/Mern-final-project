@@ -69,14 +69,22 @@ export default function BillingOverview() {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this bill?')) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/api/billing/${id}`, { method: 'DELETE' });
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/billing/${id}`, { 
+        method: 'DELETE',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      });
       if (res.ok) {
         fetchBills();
         toast.success('Bill deleted');
       } else {
-        toast.error('Failed to delete bill');
+        const errorData = await res.json().catch(() => ({}));
+        toast.error(errorData.error || 'Failed to delete bill');
       }
-    } catch {
+    } catch (error) {
+      console.error('Error deleting bill:', error);
       toast.error('Failed to delete bill');
     }
   };
@@ -275,9 +283,13 @@ export default function BillingOverview() {
             <form onSubmit={async e => {
               e.preventDefault();
               try {
+                const token = localStorage.getItem('token');
                 const res = await fetch(`${API_BASE_URL}/api/billing/${editBill._id}`, {
                   method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                  },
                   body: JSON.stringify(editBill)
                 });
                 if (res.ok) {
@@ -285,9 +297,11 @@ export default function BillingOverview() {
                   fetchBills();
                   toast.success('Bill updated!');
                 } else {
-                  toast.error('Failed to update bill');
+                  const errorData = await res.json().catch(() => ({}));
+                  toast.error(errorData.error || 'Failed to update bill');
                 }
-              } catch {
+              } catch (error) {
+                console.error('Error updating bill:', error);
                 toast.error('Failed to update bill');
               }
             }} className="space-y-4">
