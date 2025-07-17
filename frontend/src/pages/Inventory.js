@@ -10,7 +10,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
-import { WS_BASE_URL } from '../config/api';
+import { API_BASE_URL, WS_BASE_URL } from '../config/api';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -50,8 +50,18 @@ const Inventory = () => {
 
   const fetchInventory = () => {
     setLoading(true);
-    fetch('/api/inventory')
-      .then(res => res.json())
+    const token = localStorage.getItem('token');
+    fetch(`${API_BASE_URL}/api/inventory`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then(data => {
         // Ensure inventory data is an array and clean any problematic fields
         const safeInventory = Array.isArray(data) ? data.map(item => ({
@@ -71,13 +81,26 @@ const Inventory = () => {
         })) : [];
         setInventory(safeInventory);
       })
-      .catch(() => setInventory([]))
+      .catch((error) => {
+        console.error('Error fetching inventory:', error);
+        setInventory([]);
+      })
       .finally(() => setLoading(false));
   };
 
   const fetchStats = () => {
-    fetch('/api/inventory/stats/overview')
-      .then(res => res.json())
+    const token = localStorage.getItem('token');
+    fetch(`${API_BASE_URL}/api/inventory/stats/overview`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then(data => {
         // Ensure all stats are properly formatted
         const safeStats = {
@@ -91,7 +114,10 @@ const Inventory = () => {
         };
         setStats(safeStats);
       })
-      .catch(() => setStats({ totalItems: 0, lowStockCount: 0, outOfStockCount: 0, totalValue: 0, categoryStats: {} }));
+      .catch((error) => {
+        console.error('Error fetching inventory stats:', error);
+        setStats({ totalItems: 0, lowStockCount: 0, outOfStockCount: 0, totalValue: 0, categoryStats: {} });
+      });
   };
 
   useEffect(() => {
@@ -121,26 +147,40 @@ const Inventory = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await fetch('/api/inventory', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form)
-    });
-    setShowForm(false);
-    fetchInventory();
-    fetchStats();
-    setForm({
-      name: '',
-      quantity: '',
-      category: '',
-      unit: '',
-      supplier: '',
-      expiryDate: '',
-      cost: '',
-      location: '',
-      batchNumber: '',
-      manufacturer: ''
-    });
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/inventory`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(form)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      setShowForm(false);
+      fetchInventory();
+      fetchStats();
+      setForm({
+        name: '',
+        quantity: '',
+        category: '',
+        unit: '',
+        supplier: '',
+        expiryDate: '',
+        cost: '',
+        location: '',
+        batchNumber: '',
+        manufacturer: ''
+      });
+    } catch (error) {
+      console.error('Error adding inventory item:', error);
+      alert('Failed to add inventory item. Please try again.');
+    }
   };
 
   // Filter inventory by search

@@ -7,7 +7,7 @@ router.get('/', async (req, res) => {
   try {
     const { category, status, search } = req.query;
     let query = {};
-    if (search) {fix
+    if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
         { itemId: { $regex: search, $options: 'i' } },
