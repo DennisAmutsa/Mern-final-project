@@ -11,7 +11,7 @@ const Doctors = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL ? API_BASE_URL + '/api/doctors' : '/api/doctors'}`)
+    fetch(`${API_BASE_URL}/api/doctors`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -112,7 +112,7 @@ const Doctors = () => {
                     email: editDoctor.email,
                     phone: editDoctor.contactInfo?.phone
                   };
-                  await fetch(`/api/users/profile/${editDoctor._id}`, {
+                  await fetch(`${API_BASE_URL}/api/users/profile/${editDoctor._id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -120,7 +120,7 @@ const Doctors = () => {
                   setEditDoctor(null);
                   setSaving(false);
                   // Refresh doctors
-                  const res = await fetch('/api/doctors');
+                  const res = await fetch(`${API_BASE_URL}/api/doctors`);
                   const data = await res.json();
                   setDoctors(Array.isArray(data) ? data : (Array.isArray(data.doctors) ? data.doctors : []));
                 } catch (err) {
@@ -167,11 +167,11 @@ const Doctors = () => {
                 onClick={async () => {
                   setSaving(true);
                   try {
-                    await fetch(`/api/users/${deleteDoctor._id}`, { method: 'DELETE' });
+                    await fetch(`${API_BASE_URL}/api/users/${deleteDoctor._id}`, { method: 'DELETE' });
                     setDeleteDoctor(null);
                     setSaving(false);
                     // Refresh doctors
-                    const res = await fetch('/api/doctors');
+                    const res = await fetch(`${API_BASE_URL}/api/doctors`);
                     const data = await res.json();
                     setDoctors(Array.isArray(data) ? data : (Array.isArray(data.doctors) ? data.doctors : []));
                   } catch (err) {
