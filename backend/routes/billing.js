@@ -3,7 +3,7 @@ const router = express.Router();
 const Bill = require('../models/Bill');
 const Patient = require('../models/Patient');
 const { auth } = require('../middleware/auth');
-const admin = require('../middleware/admin');fu
+const admin = require('../middleware/admin');
 
 // Middleware: allow only admin or finance roles
 function financeOrAdmin(req, res, next) {
