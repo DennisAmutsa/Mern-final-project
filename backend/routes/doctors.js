@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
 
@@ -21,17 +20,13 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    // Hash password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
     // Create new doctor user
     const doctor = new User({
       firstName,
       lastName,
       email,
       username,
-      password: hashedPassword,
+      password,
       role: 'doctor',
       department,
       specialization,
