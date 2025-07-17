@@ -112,11 +112,19 @@ const Doctors = () => {
                     email: editDoctor.email,
                     phone: editDoctor.contactInfo?.phone
                   };
-                  await fetch(`${API_BASE_URL}/api/users/profile/${editDoctor._id}`, {
+                  const token = localStorage.getItem('token');
+                  const response = await fetch(`${API_BASE_URL}/api/doctors/${editDoctor._id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify(payload)
                   });
+                  
+                  if (!response.ok) {
+                    throw new Error('Failed to update doctor');
+                  }
                   setEditDoctor(null);
                   setSaving(false);
                   // Refresh doctors
@@ -167,7 +175,18 @@ const Doctors = () => {
                 onClick={async () => {
                   setSaving(true);
                   try {
-                    await fetch(`${API_BASE_URL}/api/users/${deleteDoctor._id}`, { method: 'DELETE' });
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(`${API_BASE_URL}/api/doctors/${deleteDoctor._id}`, { 
+                      method: 'DELETE',
+                      headers: {
+                        'Authorization': `Bearer ${token}`
+                      }
+                    });
+                    
+                    if (!response.ok) {
+                      throw new Error('Failed to delete doctor');
+                    }
+                    
                     setDeleteDoctor(null);
                     setSaving(false);
                     // Refresh doctors
@@ -176,7 +195,7 @@ const Doctors = () => {
                     setDoctors(Array.isArray(data) ? data : (Array.isArray(data.doctors) ? data.doctors : []));
                   } catch (err) {
                     setSaving(false);
-                    alert('Failed to delete doctor.');
+                    alert('Failed to delete doctor: ' + err.message);
                   }
                 }}
                 className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"

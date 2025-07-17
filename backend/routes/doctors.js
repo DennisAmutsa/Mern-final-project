@@ -112,6 +112,43 @@ router.get('/:id/schedule', async (req, res) => {
   }
 });
 
+// Update doctor information (Admin only)
+router.put('/:id', authenticateToken, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can update doctors' });
+    }
+    
+    const { firstName, lastName, email, department, specialization, phone } = req.body;
+    
+    const updateData = {};
+    if (firstName) updateData.firstName = firstName;
+    if (lastName) updateData.lastName = lastName;
+    if (email) updateData.email = email;
+    if (department) updateData.department = department;
+    if (specialization) updateData.specialization = specialization;
+    if (phone) updateData.contactInfo = { ...updateData.contactInfo, phone };
+    
+    const doctor = await User.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    ).select('-password -resetPasswordToken -resetPasswordExpires');
+    
+    if (!doctor || doctor.role !== 'doctor') {
+      return res.status(404).json({ error: 'Doctor not found' });
+    }
+    
+    res.json({
+      message: 'Doctor updated successfully',
+      doctor
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Update doctor schedule (Admin only)
 router.put('/:id/schedule', authenticateToken, async (req, res) => {
   try {
@@ -268,6 +305,58 @@ router.get('/availability/:date', async (req, res) => {
     
     res.json(availability);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single doctor by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const doctor = await User.findById(req.params.id)
+      .select('-password -resetPasswordToken -resetPasswordExpires')
+      .lean();
+    
+    if (!doctor || doctor.role !== 'doctor') {
+      return res.status(404).json({ error: 'Doctor not found' });
+    }
+    
+    res.json(doctor);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete doctor (Admin only)
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can delete doctors' });
+    }
+
+    const doctor = await User.findById(req.params.id);
+    
+    if (!doctor) {
+      return res.status(404).json({ error: 'Doctor not found' });
+    }
+
+    if (doctor.role !== 'doctor') {
+      return res.status(400).json({ error: 'User is not a doctor' });
+    }
+
+    // Check if doctor has any assigned patients
+    const assignedPatients = await User.find({ assignedDoctor: req.params.id });
+    if (assignedPatients.length > 0) {
+      return res.status(400).json({ 
+        error: 'Cannot delete doctor with assigned patients. Please reassign patients first.' 
+      });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+    
+    res.json({ message: 'Doctor deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting doctor:', error);
     res.status(500).json({ error: error.message });
   }
 });
