@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { API_BASE_URL } from '../config/api';
-import axios from 'axios'; // Added axios import
+import apiClient from '../config/axios';
 const PIE_COLORS = ['#0088FE', '#FF8042'];
 
 export default function FinancialReports() {
@@ -37,11 +37,7 @@ export default function FinancialReports() {
     console.log('Testing Financial Reports API connection...');
     console.log('Current API_BASE_URL:', API_BASE_URL);
     
-    axios.get('/api/financial-reports', {
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      }
-    })
+    apiClient.get('/api/financial-reports')
       .then(res => {
         console.log('Financial Reports API Response:', res.data);
         setReports(Array.isArray(res.data) ? res.data : []);
@@ -74,12 +70,7 @@ export default function FinancialReports() {
     const totalsObj = {};
     totals.forEach(t => { if (t.key && t.value !== '') totalsObj[t.key] = Number(t.value); });
     try {
-      await axios.post('/api/financial-reports', { ...form, totals: totalsObj }, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
-      });
+      await apiClient.post('/api/financial-reports', { ...form, totals: totalsObj });
       setShowAddModal(false);
       setForm({ type: '', period: '', totals: {}, notes: '' });
       setTotals([{ key: 'revenue', value: '' }, { key: 'expenses', value: '' }]); // Reset totals form
@@ -95,11 +86,7 @@ export default function FinancialReports() {
     if (!window.confirm('Delete this report?')) return;
     const token = localStorage.getItem('token');
     try {
-      await axios.delete(`/api/financial-reports/${id}`, { 
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
-      });
+      await apiClient.delete(`/api/financial-reports/${id}`);
       fetchReports();
       toast.success('Report deleted');
     } catch (error) {

@@ -74,7 +74,7 @@ const AdminDashboard = () => {
       try {
         // Test API connection first
         console.log('Testing API connection...');
-        const testResponse = await axios.get('/api/health');
+        const testResponse = await axios.get(`${API_BASE_URL}/api/health`);
         console.log('API Health Check:', testResponse.data);
         
         fetchDashboardStats();
@@ -106,7 +106,7 @@ const AdminDashboard = () => {
 
   const fetchSystemStatus = async () => {
     try {
-      const res = await axios.get('/api/health');
+      const res = await axios.get(`${API_BASE_URL}/api/health`);
       setSystemStatus(res.data);
     } catch {
       setSystemStatus(null);
@@ -115,7 +115,7 @@ const AdminDashboard = () => {
 
   const fetchAlerts = async () => {
     try {
-      const res = await axios.get('/api/audit-logs');
+      const res = await axios.get(`${API_BASE_URL}/api/audit-logs`);
       setAlerts(Array.isArray(res.data) ? res.data.slice(0, 5) : []);
     } catch {
       setAlerts([]);
@@ -124,7 +124,7 @@ const AdminDashboard = () => {
 
   const fetchDepartments = async () => {
     try {
-      const res = await axios.get('/api/departments');
+      const res = await axios.get(`${API_BASE_URL}/api/departments`);
       setDepartments(Array.isArray(res.data) ? res.data : []);
     } catch {
       setDepartments([]);
@@ -136,11 +136,11 @@ const AdminDashboard = () => {
     try {
       const token = localStorage.getItem('token');
       const [usersRes, financialRes, budgetRes, appointmentsRes, departmentsRes] = await Promise.all([
-        axios.get('/api/auth/users', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/financial-reports', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/budget', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/appointments', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/departments', { headers: { Authorization: `Bearer ${token}` } })
+        axios.get(`${API_BASE_URL}/api/auth/users`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_BASE_URL}/api/financial-reports`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_BASE_URL}/api/budget`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_BASE_URL}/api/appointments`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_BASE_URL}/api/departments`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
       setAllUsers(usersRes.data.users || []);
       setFinancialReports(Array.isArray(financialRes.data) ? financialRes.data : []);

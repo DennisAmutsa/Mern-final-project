@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { API_BASE_URL } from '../config/api';
-import axios from 'axios';
+import apiClient from '../config/axios';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A020F0', '#FF6384', '#36A2EB', '#FFCE56'];
 
@@ -24,7 +24,7 @@ export default function BudgetReports() {
 
   useEffect(() => {
     fetchBudgets();
-    axios.get('/api/departments')
+    apiClient.get('/api/departments')
       .then(res => {
         setDepartments(Array.isArray(res.data) ? res.data : []);
       })
@@ -37,11 +37,7 @@ export default function BudgetReports() {
   const fetchBudgets = () => {
     setLoading(true);
     const token = localStorage.getItem('token');
-    axios.get('/api/budget', {
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      }
-    })
+    apiClient.get('/api/budget')
       .then(res => {
         setBudgets(Array.isArray(res.data) ? res.data : []);
       })
@@ -56,12 +52,7 @@ export default function BudgetReports() {
     e.preventDefault();
     const token = localStorage.getItem('token');
     try {
-      await axios.post('/api/budget', form, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
-      });
+      await apiClient.post('/api/budget', form);
       setShowAddModal(false);
       setForm({ department: '', year: '', allocated: '', spent: '', status: 'pending', notes: '' });
       fetchBudgets();
@@ -81,12 +72,7 @@ export default function BudgetReports() {
     e.preventDefault();
     const token = localStorage.getItem('token');
     try {
-      await axios.put(`/api/budget/${editBudget._id}`, editBudget, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
-      });
+      await apiClient.put(`/api/budget/${editBudget._id}`, editBudget);
       setShowEditModal(false);
       setEditBudget(null);
       fetchBudgets();
@@ -101,9 +87,7 @@ export default function BudgetReports() {
     if (!window.confirm('Delete this budget entry?')) return;
     const token = localStorage.getItem('token');
     try {
-      await axios.delete(`/api/budget/${id}`, { 
-        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } 
-      });
+      await apiClient.delete(`/api/budget/${id}`);
       fetchBudgets();
       toast.success('Budget deleted');
     } catch (error) {

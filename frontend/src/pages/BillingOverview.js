@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { API_BASE_URL } from '../config/api';
-import axios from 'axios';
+import apiClient from '../config/axios';
 
 export default function BillingOverview() {
   const [bills, setBills] = useState([]);
@@ -25,7 +25,7 @@ export default function BillingOverview() {
 
   useEffect(() => {
     fetchBills();
-    axios.get('/api/users?roles=user,patient')
+    apiClient.get('/api/users?roles=user,patient')
       .then(res => {
         setPatients(Array.isArray(res.data) ? res.data : []);
       })
@@ -38,11 +38,7 @@ export default function BillingOverview() {
   const fetchBills = () => {
     setLoading(true);
     const token = localStorage.getItem('token');
-    axios.get('/api/billing', {
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      }
-    })
+    apiClient.get('/api/billing')
       .then(res => {
         setBills(Array.isArray(res.data) ? res.data : []);
       })
@@ -57,12 +53,7 @@ export default function BillingOverview() {
     e.preventDefault();
     const token = localStorage.getItem('token');
     try {
-      await axios.post('/api/billing', form, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
-      });
+      await apiClient.post('/api/billing', form);
       setShowAddModal(false);
       setForm({ patient: '', services: [{ name: '', cost: 0 }], amount: 0, dueDate: '', notes: '' });
       fetchBills();
@@ -77,11 +68,7 @@ export default function BillingOverview() {
     if (!window.confirm('Delete this bill?')) return;
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`/api/billing/${id}`, { 
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
-      });
+      await apiClient.delete(`/api/billing/${id}`);
       fetchBills();
       toast.success('Bill deleted');
     } catch (error) {
@@ -96,12 +83,7 @@ export default function BillingOverview() {
     if (!window.confirm(`Are you sure you want to change the status to "${newStatus}"?`)) return;
     const token = localStorage.getItem('token');
     try {
-      await axios.put(`/api/billing/${billId}`, { status: newStatus }, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        }
-      });
+      await apiClient.put(`/api/billing/${billId}`, { status: newStatus });
       fetchBills();
     } catch (error) {
       console.error('Error updating bill status:', error);

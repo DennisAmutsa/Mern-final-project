@@ -47,7 +47,7 @@ import {
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import io from 'socket.io-client';
-import { WS_BASE_URL } from '../config/api';
+import { API_BASE_URL, WS_BASE_URL } from '../config/api';
 
 const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E42', '#EF4444', '#6366F1', '#F472B6', '#FBBF24'];
 
@@ -128,8 +128,8 @@ const Stats = () => {
     setLoading(true);
     try {
       const [sdg3Res, deptRes] = await Promise.all([
-        axios.get(`/api/stats/sdg3-overview?days=${dateRange}&department=${selectedDepartment}`).then(r => r.data),
-        axios.get(`/api/stats/department-performance?days=${dateRange}`).then(r => r.data)
+        axios.get(`${API_BASE_URL}/api/stats/sdg3-overview?days=${dateRange}&department=${selectedDepartment}`).then(r => r.data),
+        axios.get(`${API_BASE_URL}/api/stats/department-performance?days=${dateRange}`).then(r => r.data)
       ]);
       setOverview(sdg3Res);
       setDepartments(deptRes);
@@ -149,9 +149,9 @@ const Stats = () => {
     try {
       const token = localStorage.getItem('token');
       const [financialRes, budgetRes, billingRes] = await Promise.all([
-        axios.get('/api/financial-reports', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/budget', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/api/billing', { headers: { Authorization: `Bearer ${token}` } })
+        axios.get(`${API_BASE_URL}/api/financial-reports`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_BASE_URL}/api/budget`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_BASE_URL}/api/billing`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
       setFinancialReports(Array.isArray(financialRes.data) ? financialRes.data : []);
       setBudgets(Array.isArray(budgetRes.data) ? budgetRes.data : []);
