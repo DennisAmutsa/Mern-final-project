@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { API_BASE_URL } from '../config/api';
+import axios from 'axios';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A020F0', '#FF6384', '#36A2EB', '#FFCE56'];
 
@@ -23,14 +24,10 @@ export default function BudgetReports() {
 
   useEffect(() => {
     fetchBudgets();
-    fetch(`${API_BASE_URL}/api/departments`)
+    axios.get('/api/departments')
       .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
+        setDepartments(Array.isArray(res.data) ? res.data : []);
       })
-      .then(data => setDepartments(Array.isArray(data) ? data : []))
       .catch((error) => {
         console.error('Error fetching departments:', error);
         setDepartments([]);
@@ -40,18 +37,14 @@ export default function BudgetReports() {
   const fetchBudgets = () => {
     setLoading(true);
     const token = localStorage.getItem('token');
-    fetch(`${API_BASE_URL}/api/budget`, {
+    axios.get('/api/budget', {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
     })
       .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
+        setBudgets(Array.isArray(res.data) ? res.data : []);
       })
-      .then(data => setBudgets(Array.isArray(data) ? data : []))
       .catch((error) => {
         console.error('Error fetching budgets:', error);
         setBudgets([]);
@@ -63,23 +56,18 @@ export default function BudgetReports() {
     e.preventDefault();
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API_BASE_URL}/api/budget`, {
-        method: 'POST',
+      await axios.post('/api/budget', form, {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(form)
+        }
       });
-      if (res.ok) {
-        setShowAddModal(false);
-        setForm({ department: '', year: '', allocated: '', spent: '', status: 'pending', notes: '' });
-        fetchBudgets();
-        toast.success('Budget added!');
-      } else {
-        toast.error('Failed to add budget');
-      }
-    } catch {
+      setShowAddModal(false);
+      setForm({ department: '', year: '', allocated: '', spent: '', status: 'pending', notes: '' });
+      fetchBudgets();
+      toast.success('Budget added!');
+    } catch (error) {
+      console.error('Error adding budget:', error);
       toast.error('Failed to add budget');
     }
   };
@@ -93,23 +81,18 @@ export default function BudgetReports() {
     e.preventDefault();
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API_BASE_URL}/api/budget/${editBudget._id}`, {
-        method: 'PUT',
+      await axios.put(`/api/budget/${editBudget._id}`, editBudget, {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(editBudget)
+        }
       });
-      if (res.ok) {
-        setShowEditModal(false);
-        setEditBudget(null);
-        fetchBudgets();
-        toast.success('Budget updated!');
-      } else {
-        toast.error('Failed to update budget');
-      }
-    } catch {
+      setShowEditModal(false);
+      setEditBudget(null);
+      fetchBudgets();
+      toast.success('Budget updated!');
+    } catch (error) {
+      console.error('Error updating budget:', error);
       toast.error('Failed to update budget');
     }
   };
@@ -118,14 +101,13 @@ export default function BudgetReports() {
     if (!window.confirm('Delete this budget entry?')) return;
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API_BASE_URL}/api/budget/${id}`, { method: 'DELETE', headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
-      if (res.ok) {
-        fetchBudgets();
-        toast.success('Budget deleted');
-      } else {
-        toast.error('Failed to delete budget');
-      }
-    } catch {
+      await axios.delete(`/api/budget/${id}`, { 
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } 
+      });
+      fetchBudgets();
+      toast.success('Budget deleted');
+    } catch (error) {
+      console.error('Error deleting budget:', error);
       toast.error('Failed to delete budget');
     }
   };

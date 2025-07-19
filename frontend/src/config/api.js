@@ -1,7 +1,7 @@
 // API Configuration
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? '' // Use relative URLs in production (Vercel handles routing)
-  : ''; // Use proxy in development
+  ? 'https://mern-final-project-bres.onrender.com' // Use Render backend URL in production
+  : 'http://localhost:5000'; // Use local backend in development
 
 const WS_BASE_URL = process.env.NODE_ENV === 'production'
   ? 'https://mern-final-project-bres.onrender.com'

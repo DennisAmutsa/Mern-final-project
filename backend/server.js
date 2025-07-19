@@ -18,7 +18,7 @@ const io = socketIo(server, {
       "https://mern-final-project-g1oj.vercel.app",
       "https://mern-final-project-g1oj-2q7ho78aa-dennis-projects-a77c1de0.vercel.app"
     ],
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
   }
 });
 
@@ -63,7 +63,9 @@ app.use(cors({
     "https://mern-final-project-g1oj.vercel.app",
     "https://mern-final-project-g1oj-2q7ho78aa-dennis-projects-a77c1de0.vercel.app"
   ],
-  credentials: true
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.use(morgan('combined'));
 app.use(express.json());

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { API_BASE_URL } from '../config/api';
+import axios from 'axios';
 
 export default function BillingOverview() {
   const [bills, setBills] = useState([]);
@@ -24,14 +25,10 @@ export default function BillingOverview() {
 
   useEffect(() => {
     fetchBills();
-    fetch(`${API_BASE_URL}/api/users?roles=user,patient`)
+    axios.get('/api/users?roles=user,patient')
       .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
+        setPatients(Array.isArray(res.data) ? res.data : []);
       })
-      .then(data => setPatients(Array.isArray(data) ? data : []))
       .catch((error) => {
         console.error('Error fetching patients:', error);
         setPatients([]);
@@ -41,18 +38,14 @@ export default function BillingOverview() {
   const fetchBills = () => {
     setLoading(true);
     const token = localStorage.getItem('token');
-    fetch(`${API_BASE_URL}/api/billing`, {
+    axios.get('/api/billing', {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
     })
       .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
+        setBills(Array.isArray(res.data) ? res.data : []);
       })
-      .then(data => setBills(Array.isArray(data) ? data : []))
       .catch((error) => {
         console.error('Error fetching bills:', error);
         setBills([]);
@@ -64,23 +57,18 @@ export default function BillingOverview() {
     e.preventDefault();
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API_BASE_URL}/api/billing`, {
-        method: 'POST',
+      await axios.post('/api/billing', form, {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(form)
+        }
       });
-      if (res.ok) {
-        setShowAddModal(false);
-        setForm({ patient: '', services: [{ name: '', cost: 0 }], amount: 0, dueDate: '', notes: '' });
-        fetchBills();
-        toast.success('Bill added!');
-      } else {
-        toast.error('Failed to add bill');
-      }
-    } catch {
+      setShowAddModal(false);
+      setForm({ patient: '', services: [{ name: '', cost: 0 }], amount: 0, dueDate: '', notes: '' });
+      fetchBills();
+      toast.success('Bill added!');
+    } catch (error) {
+      console.error('Error adding bill:', error);
       toast.error('Failed to add bill');
     }
   };
@@ -89,19 +77,13 @@ export default function BillingOverview() {
     if (!window.confirm('Delete this bill?')) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/api/billing/${id}`, { 
-        method: 'DELETE',
+      await axios.delete(`/api/billing/${id}`, { 
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         }
       });
-      if (res.ok) {
-        fetchBills();
-        toast.success('Bill deleted');
-      } else {
-        const errorData = await res.json().catch(() => ({}));
-        toast.error(errorData.error || 'Failed to delete bill');
-      }
+      fetchBills();
+      toast.success('Bill deleted');
     } catch (error) {
       console.error('Error deleting bill:', error);
       toast.error('Failed to delete bill');
@@ -113,15 +95,18 @@ export default function BillingOverview() {
   const handleStatusChange = async (billId, newStatus) => {
     if (!window.confirm(`Are you sure you want to change the status to "${newStatus}"?`)) return;
     const token = localStorage.getItem('token');
-    await fetch(`${API_BASE_URL}/api/billing/${billId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      },
-      body: JSON.stringify({ status: newStatus })
-    });
-    fetchBills();
+    try {
+      await axios.put(`/api/billing/${billId}`, { status: newStatus }, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      });
+      fetchBills();
+    } catch (error) {
+      console.error('Error updating bill status:', error);
+      toast.error('Failed to update bill status');
+    }
   };
 
   // Filtered bills

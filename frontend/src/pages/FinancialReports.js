@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { API_BASE_URL } from '../config/api';
+import axios from 'axios'; // Added axios import
 const PIE_COLORS = ['#0088FE', '#FF8042'];
 
 export default function FinancialReports() {
@@ -31,18 +32,14 @@ export default function FinancialReports() {
   const fetchReports = () => {
     setLoading(true);
     const token = localStorage.getItem('token');
-    fetch(`${API_BASE_URL}/api/financial-reports`, {
+    axios.get('/api/financial-reports', {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
     })
       .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
+        setReports(Array.isArray(res.data) ? res.data : []);
       })
-      .then(data => setReports(Array.isArray(data) ? data : []))
       .catch((error) => {
         console.error('Error fetching reports:', error);
         setReports([]);
@@ -65,24 +62,19 @@ export default function FinancialReports() {
     const totalsObj = {};
     totals.forEach(t => { if (t.key && t.value !== '') totalsObj[t.key] = Number(t.value); });
     try {
-      const res = await fetch(`${API_BASE_URL}/api/financial-reports`, {
-        method: 'POST',
+      await axios.post('/api/financial-reports', { ...form, totals: totalsObj }, {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ ...form, totals: totalsObj })
+        }
       });
-      if (res.ok) {
-        setShowAddModal(false);
-        setForm({ type: '', period: '', totals: {}, notes: '' });
-        setTotals([{ key: 'revenue', value: '' }, { key: 'expenses', value: '' }]); // Reset totals form
-        fetchReports();
-        toast.success('Report added!');
-      } else {
-        toast.error('Failed to add report');
-      }
-    } catch {
+      setShowAddModal(false);
+      setForm({ type: '', period: '', totals: {}, notes: '' });
+      setTotals([{ key: 'revenue', value: '' }, { key: 'expenses', value: '' }]); // Reset totals form
+      fetchReports();
+      toast.success('Report added!');
+    } catch (error) {
+      console.error('Error adding report:', error);
       toast.error('Failed to add report');
     }
   };
@@ -91,19 +83,15 @@ export default function FinancialReports() {
     if (!window.confirm('Delete this report?')) return;
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API_BASE_URL}/api/financial-reports/${id}`, { 
-        method: 'DELETE',
+      await axios.delete(`/api/financial-reports/${id}`, { 
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         }
       });
-      if (res.ok) {
-        fetchReports();
-        toast.success('Report deleted');
-      } else {
-        toast.error('Failed to delete report');
-      }
-    } catch {
+      fetchReports();
+      toast.success('Report deleted');
+    } catch (error) {
+      console.error('Error deleting report:', error);
       toast.error('Failed to delete report');
     }
   };
