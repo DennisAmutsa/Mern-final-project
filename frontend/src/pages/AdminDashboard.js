@@ -67,11 +67,29 @@ const AdminDashboard = () => {
   ];
 
   useEffect(() => {
-    fetchDashboardStats();
-    fetchSystemStatus();
-    fetchAlerts();
-    fetchDepartments();
-    fetchAllAnalyticsData();
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      try {
+        // Test API connection first
+        console.log('Testing API connection...');
+        const testResponse = await axios.get('/api/health');
+        console.log('API Health Check:', testResponse.data);
+        
+        fetchDashboardStats();
+        fetchSystemStatus();
+        fetchAlerts();
+        fetchDepartments();
+        fetchAllAnalyticsData();
+      } catch (error) {
+        toast.error('Failed to connect to backend. Please check server status.');
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
   }, []);
 
   const fetchDashboardStats = async () => {

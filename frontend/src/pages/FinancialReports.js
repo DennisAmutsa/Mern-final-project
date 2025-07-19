@@ -32,16 +32,28 @@ export default function FinancialReports() {
   const fetchReports = () => {
     setLoading(true);
     const token = localStorage.getItem('token');
+    
+    // Test API connection first
+    console.log('Testing Financial Reports API connection...');
+    console.log('Current API_BASE_URL:', API_BASE_URL);
+    
     axios.get('/api/financial-reports', {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
     })
       .then(res => {
+        console.log('Financial Reports API Response:', res.data);
         setReports(Array.isArray(res.data) ? res.data : []);
       })
       .catch((error) => {
         console.error('Error fetching reports:', error);
+        console.error('Error details:', {
+          message: error.message,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          url: error.config?.url
+        });
         setReports([]);
       })
       .finally(() => setLoading(false));

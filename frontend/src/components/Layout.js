@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config/api';
 import { 
   LayoutDashboard, 
   Users, 
@@ -68,6 +69,30 @@ const adminGroups = [
     ]
   }
 ];
+
+const APIDebug = () => {
+  if (process.env.NODE_ENV === 'development') {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: '10px',
+        right: '10px',
+        background: '#333',
+        color: '#fff',
+        padding: '10px',
+        borderRadius: '5px',
+        fontSize: '12px',
+        zIndex: 9999,
+        maxWidth: '300px'
+      }}>
+        <div>API URL: {API_BASE_URL}</div>
+        <div>Hostname: {window.location.hostname}</div>
+        <div>NODE_ENV: {process.env.NODE_ENV}</div>
+      </div>
+    );
+  }
+  return null;
+};
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -328,6 +353,7 @@ const Layout = () => {
           </div>
         </main>
       </div>
+      <APIDebug />
     </div>
   );
 };
