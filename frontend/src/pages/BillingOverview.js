@@ -24,7 +24,18 @@ export default function BillingOverview() {
 
   useEffect(() => {
     fetchBills();
-    fetch(`${API_BASE_URL}/api/users?roles=user,patient`).then(res => res.json()).then(data => setPatients(Array.isArray(data) ? data : []));
+    fetch(`${API_BASE_URL}/api/users?roles=user,patient`)
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(data => setPatients(Array.isArray(data) ? data : []))
+      .catch((error) => {
+        console.error('Error fetching patients:', error);
+        setPatients([]);
+      });
   }, []);
 
   const fetchBills = () => {
@@ -35,9 +46,17 @@ export default function BillingOverview() {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then(data => setBills(Array.isArray(data) ? data : []))
-      .catch(() => setBills([]))
+      .catch((error) => {
+        console.error('Error fetching bills:', error);
+        setBills([]);
+      })
       .finally(() => setLoading(false));
   };
 

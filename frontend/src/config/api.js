@@ -1,6 +1,6 @@
 // API Configuration
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://mern-final-project-bres.onrender.com' 
+  ? '' // Use relative URLs in production (Vercel handles routing)
   : ''; // Use proxy in development
 
 const WS_BASE_URL = process.env.NODE_ENV === 'production'

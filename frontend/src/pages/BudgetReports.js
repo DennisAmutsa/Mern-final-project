@@ -24,8 +24,17 @@ export default function BudgetReports() {
   useEffect(() => {
     fetchBudgets();
     fetch(`${API_BASE_URL}/api/departments`)
-      .then(res => res.json())
-      .then(data => setDepartments(Array.isArray(data) ? data : []));
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(data => setDepartments(Array.isArray(data) ? data : []))
+      .catch((error) => {
+        console.error('Error fetching departments:', error);
+        setDepartments([]);
+      });
   }, []);
 
   const fetchBudgets = () => {
@@ -36,9 +45,17 @@ export default function BudgetReports() {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then(data => setBudgets(Array.isArray(data) ? data : []))
-      .catch(() => setBudgets([]))
+      .catch((error) => {
+        console.error('Error fetching budgets:', error);
+        setBudgets([]);
+      })
       .finally(() => setLoading(false));
   };
 
