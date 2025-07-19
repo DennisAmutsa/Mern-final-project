@@ -120,7 +120,7 @@ const DepartmentManagement = () => {
       if (error.response?.status === 500) {
         toast.error('Department deletion is temporarily unavailable. Please try again later.');
       } else {
-        toast.error('Failed to delete department');
+      toast.error('Failed to delete department');
       }
     }
   };

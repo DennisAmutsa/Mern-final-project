@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
 
 const MedicalRecords = () => {
@@ -59,14 +59,20 @@ const MedicalRecords = () => {
     try {
       if (user.role === 'doctor') {
         // For doctors: fetch assigned patients
-        const response = await axios.get(`/api/auth/doctor/patients?roles=user&assignedDoctor=${user._id}`);
+        const userId = user?.id || user?._id;
+        console.log('🔍 Fetching patients for doctor:', userId);
+        const response = await apiClient.get(`/api/auth/doctor/patients?roles=user&assignedDoctor=${userId}`);
+        console.log('📊 Patients response:', response.data);
         setPatients(response.data.users || []);
       } else {
         // For patients: they are their own "patient"
         setPatients([user]);
       }
     } catch (error) {
-      console.error('Error fetching patients:', error);
+      console.error('❌ Error fetching patients:', error);
+      if (error.response?.status === 403) {
+        toast.error('Access denied. This feature requires doctor role.');
+      }
       setPatients([]);
     }
   };
@@ -77,7 +83,9 @@ const MedicalRecords = () => {
       
       if (user.role === 'doctor') {
         // For doctors: fetch all assigned patients' records
-        const response = await axios.get(`/api/auth/doctor/patients?roles=user&assignedDoctor=${user._id}`);
+        const userId = user?.id || user?._id;
+        console.log('🔍 Fetching medical records for doctor:', userId);
+        const response = await apiClient.get(`/api/auth/doctor/patients?roles=user&assignedDoctor=${userId}`);
         const allRecords = [];
         
         response.data.users?.forEach(patient => {
@@ -93,10 +101,11 @@ const MedicalRecords = () => {
           }
         });
         
+        console.log('📊 Medical records found:', allRecords.length);
         setRecords(allRecords);
       } else {
         // For patients: fetch their own records
-        const response = await axios.get('/api/auth/profile');
+        const response = await apiClient.get('/api/auth/profile');
         const userData = response.data.user;
         
         if (userData.medicalHistory && userData.medicalHistory.length > 0) {
@@ -113,7 +122,7 @@ const MedicalRecords = () => {
       }
     } catch (error) {
       toast.error('Failed to fetch medical records');
-      console.error('Error fetching medical records:', error);
+      console.error('❌ Error fetching medical records:', error);
       } finally {
         setLoading(false);
       }
@@ -121,7 +130,8 @@ const MedicalRecords = () => {
 
   const handleAddRecord = async (recordData) => {
     try {
-      await axios.put(`/api/auth/users/${recordData.patientId}/medical-record`, {
+      console.log('🔍 Adding medical record for patient:', recordData.patientId);
+      await apiClient.put(`/api/auth/users/${recordData.patientId}/medical-record`, {
         condition: recordData.condition,
         diagnosis: recordData.diagnosis,
         treatment: recordData.treatment,
@@ -135,14 +145,15 @@ const MedicalRecords = () => {
       fetchMedicalRecords();
     } catch (error) {
       toast.error('Failed to add medical record');
-      console.error('Error adding medical record:', error);
+      console.error('❌ Error adding medical record:', error);
     }
   };
 
   const handleUpdateRecord = async (recordData) => {
     try {
       // For now, we'll add a new record since updating existing records requires more complex logic
-      await axios.put(`/api/auth/users/${recordData.patientId}/medical-record`, {
+      console.log('🔍 Updating medical record for patient:', recordData.patientId);
+      await apiClient.put(`/api/auth/users/${recordData.patientId}/medical-record`, {
         condition: recordData.condition,
         diagnosis: recordData.diagnosis,
         treatment: recordData.treatment,
@@ -156,7 +167,7 @@ const MedicalRecords = () => {
       fetchMedicalRecords();
     } catch (error) {
       toast.error('Failed to update medical record');
-      console.error('Error updating medical record:', error);
+      console.error('❌ Error updating medical record:', error);
     }
   };
 

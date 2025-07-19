@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
 
 const Prescriptions = () => {
@@ -57,14 +57,20 @@ const Prescriptions = () => {
     try {
       if (user.role === 'doctor') {
         // For doctors: fetch assigned patients
-        const response = await axios.get(`/api/auth/doctor/patients?roles=user&assignedDoctor=${user._id}`);
+        const userId = user?.id || user?._id;
+        console.log('🔍 Fetching patients for doctor:', userId);
+        const response = await apiClient.get(`/api/auth/doctor/patients?roles=user&assignedDoctor=${userId}`);
+        console.log('📊 Patients response:', response.data);
         setPatients(response.data.users || []);
       } else {
         // For patients: they are their own "patient"
         setPatients([user]);
       }
     } catch (error) {
-      console.error('Error fetching patients:', error);
+      console.error('❌ Error fetching patients:', error);
+      if (error.response?.status === 403) {
+        toast.error('Access denied. This feature requires doctor role.');
+      }
       setPatients([]);
     }
   };
@@ -75,7 +81,9 @@ const Prescriptions = () => {
       
       if (user.role === 'doctor') {
         // For doctors: fetch all assigned patients' prescriptions
-        const response = await axios.get(`/api/auth/doctor/patients?roles=user&assignedDoctor=${user._id}`);
+        const userId = user?.id || user?._id;
+        console.log('🔍 Fetching prescriptions for doctor:', userId);
+        const response = await apiClient.get(`/api/auth/doctor/patients?roles=user&assignedDoctor=${userId}`);
         const allPrescriptions = [];
         
         response.data.users?.forEach(patient => {
@@ -91,10 +99,11 @@ const Prescriptions = () => {
           }
         });
         
+        console.log('📊 Prescriptions found:', allPrescriptions.length);
         setPrescriptions(allPrescriptions);
       } else {
         // For patients: fetch their own prescriptions
-        const response = await axios.get('/api/auth/profile');
+        const response = await apiClient.get('/api/auth/profile');
         const userData = response.data.user;
         
         if (userData.currentMedications && userData.currentMedications.length > 0) {
@@ -111,15 +120,16 @@ const Prescriptions = () => {
       }
     } catch (error) {
       toast.error('Failed to fetch prescriptions');
-      console.error('Error fetching prescriptions:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      console.error('❌ Error fetching prescriptions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddPrescription = async (prescriptionData) => {
     try {
-      await axios.put(`/api/auth/users/${prescriptionData.patientId}/prescription`, {
+      console.log('🔍 Adding prescription for patient:', prescriptionData.patientId);
+      await apiClient.put(`/api/auth/users/${prescriptionData.patientId}/prescription`, {
         name: prescriptionData.name,
         dosage: prescriptionData.dosage,
         frequency: prescriptionData.frequency,
@@ -132,7 +142,7 @@ const Prescriptions = () => {
       fetchPrescriptions();
     } catch (error) {
       toast.error('Failed to add prescription');
-      console.error('Error adding prescription:', error);
+      console.error('❌ Error adding prescription:', error);
     }
   };
 
