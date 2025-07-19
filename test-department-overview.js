@@ -87,6 +87,27 @@ async function testDepartmentOverview() {
       } catch (deleteError) {
         console.log('❌ Department deletion failed:', deleteError.response?.status);
         console.log('📋 Error details:', deleteError.response?.data);
+        
+        // Test disable as alternative
+        console.log('\n5️⃣ Testing Department Disable (Alternative)...');
+        try {
+          const disableResponse = await axios.put(`${baseURL}/api/departments/${createResponse.data._id}`, {
+            name: createResponse.data.name,
+            description: createResponse.data.description,
+            location: createResponse.data.location,
+            phone: createResponse.data.phone,
+            email: createResponse.data.email,
+            headOfDepartment: createResponse.data.headOfDepartment,
+            capacity: createResponse.data.capacity,
+            status: 'inactive'
+          }, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          console.log('✅ Department disable works');
+          console.log('📋 Disable response:', disableResponse.data);
+        } catch (disableError) {
+          console.log('❌ Department disable failed:', disableError.response?.status);
+        }
       }
       
     } catch (createError) {

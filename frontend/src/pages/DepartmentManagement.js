@@ -112,12 +112,40 @@ const DepartmentManagement = () => {
     
     try {
       console.log('🔍 Deleting department:', departmentId);
-      await apiClient.post(`/api/departments/${departmentId}/delete`);
+      await apiClient.delete(`/api/departments/${departmentId}`);
       toast.success('Department deleted successfully');
       fetchDepartments();
     } catch (error) {
       console.error('❌ Error deleting department:', error);
-      toast.error('Failed to delete department');
+      if (error.response?.status === 500) {
+        toast.error('Department deletion is temporarily unavailable. Please try again later.');
+      } else {
+        toast.error('Failed to delete department');
+      }
+    }
+  };
+
+  const handleDisable = async (departmentId) => {
+    if (!window.confirm('Are you sure you want to disable this department? It will be hidden from active lists.')) return;
+    
+    try {
+      console.log('🔍 Disabling department:', departmentId);
+      // Get the current department data
+      const departmentsResponse = await apiClient.get('/api/departments');
+      const department = departmentsResponse.data.find(d => d._id === departmentId);
+      
+      if (department) {
+        // Update the department status to inactive
+        await apiClient.put(`/api/departments/${departmentId}`, {
+          ...department,
+          status: 'inactive'
+        });
+        toast.success('Department disabled successfully');
+        fetchDepartments();
+      }
+    } catch (error) {
+      console.error('❌ Error disabling department:', error);
+      toast.error('Failed to disable department');
     }
   };
 
@@ -218,6 +246,7 @@ const DepartmentManagement = () => {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
               <option value="maintenance">Maintenance</option>
+              <option value="deleted">Deleted</option>
             </select>
           </div>
           <div className="flex items-end">
@@ -269,9 +298,19 @@ const DepartmentManagement = () => {
                   <button
                     onClick={() => handleDelete(department._id)}
                     className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                    title="Delete department"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
+                  {department.status === 'active' && (
+                    <button
+                      onClick={() => handleDisable(department._id)}
+                      className="p-1 text-yellow-600 hover:text-yellow-800 hover:bg-yellow-50 rounded"
+                      title="Disable department"
+                    >
+                      <Activity className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
 
