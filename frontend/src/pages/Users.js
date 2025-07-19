@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users as UsersIcon, UserPlus, Shield, UserCheck, UserX, Edit, Trash2, Search, Filter } from 'lucide-react';
-import { API_BASE_URL } from '../config/api';
+import apiClient from '../config/axios';
 
 const Users = () => {
   const [users, setUsers] = useState([]);
@@ -57,19 +57,12 @@ const Users = () => {
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/auth/users`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users);
-      }
+      console.log('🔍 Fetching users...');
+      const response = await apiClient.get('/api/users');
+      console.log('📊 Users response:', response.data);
+      setUsers(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('❌ Error fetching users:', error);
     } finally {
       setLoading(false);
     }
@@ -77,79 +70,53 @@ const Users = () => {
 
   const handleAssignRole = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/auth/users/${selectedUser._id}/assign-role`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(assignForm)
-      });
-
-      if (response.ok) {
-        setShowAssignModal(false);
-        setSelectedUser(null);
-        setAssignForm({ role: '', department: '', employeeId: '' });
-        fetchUsers();
-      }
+      console.log('🔍 Assigning role to user:', selectedUser._id, assignForm);
+      const response = await apiClient.put(`/api/auth/users/${selectedUser._id}/assign-role`, assignForm);
+      console.log('✅ Role assigned successfully:', response.data);
+      
+      setShowAssignModal(false);
+      setSelectedUser(null);
+      setAssignForm({ role: '', department: '', employeeId: '' });
+      fetchUsers();
     } catch (error) {
-      console.error('Error assigning role:', error);
+      console.error('❌ Error assigning role:', error);
+      alert(error.response?.data?.error || 'Failed to assign role');
     }
   };
 
   const handleAddUser = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/auth/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(addUserForm)
+      console.log('🔍 Creating user:', addUserForm);
+      const response = await apiClient.post('/api/auth/register', addUserForm);
+      console.log('✅ User created successfully:', response.data);
+      
+      setShowAddUserModal(false);
+      setAddUserForm({
+        firstName: '',
+        lastName: '',
+        email: '',
+        username: '',
+        password: '',
+        role: '',
+        department: '',
+        employeeId: ''
       });
-
-      if (response.ok) {
-        setShowAddUserModal(false);
-        setAddUserForm({
-          firstName: '',
-          lastName: '',
-          email: '',
-          username: '',
-          password: '',
-          role: '',
-          department: '',
-          employeeId: ''
-        });
-        fetchUsers();
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to create user');
-      }
+      fetchUsers();
     } catch (error) {
-      console.error('Error creating user:', error);
-      alert('Failed to create user');
+      console.error('❌ Error creating user:', error);
+      alert(error.response?.data?.error || 'Failed to create user');
     }
   };
 
   const handleToggleStatus = async (userId, currentStatus) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/auth/users/${userId}/toggle-status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ isActive: !currentStatus })
-      });
-
-      if (response.ok) {
-        fetchUsers();
-      }
+      console.log('🔍 Toggling status for user:', userId, 'from', currentStatus, 'to', !currentStatus);
+      const response = await apiClient.put(`/api/auth/users/${userId}/toggle-status`, { isActive: !currentStatus });
+      console.log('✅ Status toggled successfully:', response.data);
+      fetchUsers();
     } catch (error) {
-      console.error('Error toggling status:', error);
+      console.error('❌ Error toggling status:', error);
+      alert(error.response?.data?.error || 'Failed to toggle status');
     }
   };
 
@@ -157,19 +124,13 @@ const Users = () => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/auth/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        fetchUsers();
-      }
+      console.log('🔍 Deleting user:', userId);
+      const response = await apiClient.delete(`/api/auth/users/${userId}`);
+      console.log('✅ User deleted successfully:', response.data);
+      fetchUsers();
     } catch (error) {
-      console.error('Error deleting user:', error);
+      console.error('❌ Error deleting user:', error);
+      alert(error.response?.data?.error || 'Failed to delete user');
     }
   };
 
@@ -189,43 +150,16 @@ const Users = () => {
 
   const handleEditUser = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/auth/users/${selectedUser._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(editUserForm)
-      });
+      console.log('🔍 Updating user:', selectedUser._id, editUserForm);
+      const response = await apiClient.put(`/api/users/profile/${selectedUser._id}`, editUserForm);
+      console.log('✅ User updated successfully:', response.data);
       
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-      
-      if (response.ok) {
-        setShowEditUserModal(false);
-        setSelectedUser(null);
-        fetchUsers();
-      } else {
-        // Check if response has JSON content
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-        const error = await response.json();
-        if (error.errors && Array.isArray(error.errors)) {
-          alert(error.errors.map(e => e.msg).join('\n'));
-        } else {
-          alert(error.error || 'Failed to update user');
-          }
-        } else {
-          // Handle non-JSON response (like HTML error page)
-          const textResponse = await response.text();
-          console.error('Non-JSON response:', textResponse);
-          alert('Server error: Invalid response format');
-        }
-      }
+      setShowEditUserModal(false);
+      setSelectedUser(null);
+      fetchUsers();
     } catch (error) {
-      console.error('Error updating user:', error);
-      alert('Failed to update user');
+      console.error('❌ Error updating user:', error);
+      alert(error.response?.data?.error || 'Failed to update user');
     }
   };
 
