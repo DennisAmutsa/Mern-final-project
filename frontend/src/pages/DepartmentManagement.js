@@ -149,6 +149,30 @@ const DepartmentManagement = () => {
     }
   };
 
+  const handleEnable = async (departmentId) => {
+    if (!window.confirm('Are you sure you want to re-enable this department?')) return;
+    
+    try {
+      console.log('🔍 Re-enabling department:', departmentId);
+      // Get the current department data
+      const departmentsResponse = await apiClient.get('/api/departments');
+      const department = departmentsResponse.data.find(d => d._id === departmentId);
+      
+      if (department) {
+        // Update the department status to active
+        await apiClient.put(`/api/departments/${departmentId}`, {
+          ...department,
+          status: 'active'
+        });
+        toast.success('Department re-enabled successfully');
+        fetchDepartments();
+      }
+    } catch (error) {
+      console.error('❌ Error re-enabling department:', error);
+      toast.error('Failed to re-enable department');
+    }
+  };
+
   const openAssignModal = async (department) => {
     setAssigningDepartment(department);
     setShowAssignModal(true);
@@ -190,7 +214,17 @@ const DepartmentManagement = () => {
   const filteredDepartments = (Array.isArray(departments) ? departments : []).filter(dept => {
     const matchesSearch = dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          dept.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = !filterStatus || dept.status === filterStatus;
+    
+    // By default, only show active and maintenance departments (hide inactive and deleted)
+    let matchesStatus;
+    if (!filterStatus) {
+      // Default view: only show active and maintenance departments
+      matchesStatus = dept.status === 'active' || dept.status === 'maintenance';
+    } else {
+      // When a specific status is selected, show only that status
+      matchesStatus = dept.status === filterStatus;
+    }
+    
     return matchesSearch && matchesStatus;
   });
 
@@ -307,6 +341,15 @@ const DepartmentManagement = () => {
                       onClick={() => handleDisable(department._id)}
                       className="p-1 text-yellow-600 hover:text-yellow-800 hover:bg-yellow-50 rounded"
                       title="Disable department"
+                    >
+                      <Activity className="h-4 w-4" />
+                    </button>
+                  )}
+                  {department.status === 'inactive' && (
+                    <button
+                      onClick={() => handleEnable(department._id)}
+                      className="p-1 text-green-600 hover:text-green-800 hover:bg-green-50 rounded"
+                      title="Re-enable department"
                     >
                       <Activity className="h-4 w-4" />
                     </button>
