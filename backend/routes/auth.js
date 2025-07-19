@@ -657,8 +657,8 @@ router.put('/users/profile/:id', async (req, res) => {
   }
 });
 
-// Add medical record to patient (doctor only)
-router.put('/users/:userId/medical-record', authenticateToken, requireRole('doctor'), [
+// Add medical record to patient (doctor or admin)
+router.put('/users/:userId/medical-record', authenticateToken, requireRole(['doctor', 'admin']), [
   body('condition').notEmpty().withMessage('Condition is required'),
   body('diagnosis').notEmpty().withMessage('Diagnosis is required'),
   body('type').isIn(['Consultation', 'Surgery', 'Test', 'Prescription', 'Follow-up', 'Emergency']).withMessage('Valid record type required'),
@@ -712,8 +712,8 @@ router.put('/users/:userId/medical-record', authenticateToken, requireRole('doct
   }
 });
 
-// Add prescription to patient (doctor only)
-router.put('/users/:userId/prescription', authenticateToken, requireRole('doctor'), [
+// Add prescription to patient (doctor or admin)
+router.put('/users/:userId/prescription', authenticateToken, requireRole(['doctor', 'admin']), [
   body('name').notEmpty().withMessage('Medication name is required'),
   body('dosage').notEmpty().withMessage('Dosage is required')
 ], async (req, res) => {
@@ -765,8 +765,8 @@ router.put('/users/:userId/prescription', authenticateToken, requireRole('doctor
   }
 });
 
-// Get assigned patients for doctor
-router.get('/doctor/patients', authenticateToken, requireRole('doctor'), async (req, res) => {
+// Get assigned patients for doctor (also accessible by admin)
+router.get('/doctor/patients', authenticateToken, requireRole(['doctor', 'admin']), async (req, res) => {
   try {
     const { roles, assignedDoctor, search } = req.query;
     

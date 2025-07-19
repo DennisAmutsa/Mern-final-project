@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, UserCheck, Plus, Search, Filter, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
-import { API_BASE_URL } from '../config/api';
 
 const Appointments = () => {
   const [appointments, setAppointments] = useState([]);
@@ -20,29 +19,39 @@ const Appointments = () => {
   const isReceptionist = user?.role === 'receptionist';
   const isAdmin = user?.role === 'admin';
 
-  const fetchAppointments = () => {
-    let url = `${API_BASE_URL ? API_BASE_URL + '/api/appointments' : '/api/appointments'}`;
-    if (user?.role === 'doctor' && user?._id) {
-      url += `?doctor=${user._id}`;
+  const fetchAppointments = async () => {
+    try {
+      // Use user.id instead of user._id (MongoDB vs API response format)
+      const userId = user?.id || user?._id;
+      let url = '/api/appointments';
+      
+      if (user?.role === 'doctor' && userId) {
+        url += `?doctor=${userId}`;
+        console.log('🔍 Fetching appointments for doctor:', userId);
+      }
+      
+      console.log('📋 Fetching appointments from URL:', url);
+      const response = await apiClient.get(url);
+      console.log('📊 Appointments response:', response.data);
+      
+      if (Array.isArray(response.data)) {
+        setAppointments(response.data);
+      } else if (Array.isArray(response.data.appointments)) {
+        setAppointments(response.data.appointments);
+      } else {
+        setAppointments([]);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching appointments:', error);
+      setAppointments([]);
+    } finally {
+      setLoading(false);
     }
-    fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setAppointments(data);
-        } else if (Array.isArray(data.appointments)) {
-          setAppointments(data.appointments);
-        } else {
-          setAppointments([]);
-        }
-      })
-      .catch(() => setAppointments([]))
-      .finally(() => setLoading(false));
   };
 
   const fetchPatients = async () => {
     try {
-      const response = await axios.get('/api/users?roles=user,patient');
+      const response = await apiClient.get('/api/users?roles=user,patient');
       setPatients(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching patients:', error);
@@ -52,7 +61,7 @@ const Appointments = () => {
 
   const fetchDoctors = async () => {
     try {
-      const response = await axios.get('/api/users?roles=doctor');
+      const response = await apiClient.get('/api/users?roles=doctor');
       setDoctors(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching doctors:', error);
@@ -85,7 +94,7 @@ const Appointments = () => {
 
   const handleStatusUpdate = async (id) => {
     if (!newStatus) return;
-    await axios.put(`/api/appointments/${id}`, { status: newStatus });
+    await apiClient.put(`/api/appointments/${id}`, { status: newStatus });
     setEditingId(null);
     setNewStatus('');
     fetchAppointments();
@@ -94,7 +103,7 @@ const Appointments = () => {
   const handleScheduleAppointment = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('/api/appointments', scheduleForm);
+      await apiClient.post('/api/appointments', scheduleForm);
       toast.success('Appointment scheduled successfully!');
       setShowScheduleModal(false);
       setScheduleForm({
@@ -313,13 +322,13 @@ const Appointments = () => {
                             onClick={async () => {
                               // Handle appointment cancellation
                               if (window.confirm('Are you sure you want to cancel this appointment?')) {
-                                try {
-                                  await axios.put(`/api/appointments/${appointment._id}`, { status: 'Cancelled' });
-                                  toast.success('Appointment cancelled successfully!');
-                                  fetchAppointments();
-                                } catch (error) {
-                                  toast.error('Failed to cancel appointment');
-                                }
+                                                              try {
+                                await apiClient.put(`/api/appointments/${appointment._id}`, { status: 'Cancelled' });
+                                toast.success('Appointment cancelled successfully!');
+                                fetchAppointments();
+                              } catch (error) {
+                                toast.error('Failed to cancel appointment');
+                              }
                               }
                             }}
                             className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600"

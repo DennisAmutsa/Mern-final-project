@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
 
 const DoctorDashboard = () => {
@@ -80,11 +80,13 @@ const DoctorDashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await axios.get('/api/stats/doctor-dashboard');
+      console.log('🔍 Fetching doctor dashboard stats...');
+      const response = await apiClient.get('/api/stats/doctor-dashboard');
+      console.log('📊 Dashboard stats response:', response.data);
       setStats(response.data);
     } catch (error) {
+      console.error('❌ Error fetching dashboard stats:', error);
       toast.error('Failed to fetch dashboard statistics');
-      console.error('Error fetching dashboard stats:', error);
     } finally {
       setLoading(false);
     }
@@ -92,16 +94,24 @@ const DoctorDashboard = () => {
 
   const fetchAssignedPatients = async () => {
     try {
-      if (!user?._id) {
-        console.error('User ID not available');
+      // Use user.id instead of user._id (MongoDB vs API response format)
+      const userId = user?.id || user?._id;
+      if (!userId) {
+        console.error('❌ User ID not available');
         setAssignedPatients([]);
         return;
       }
       
-      const response = await axios.get(`/api/auth/doctor/patients?roles=user&assignedDoctor=${user._id}`);
+      console.log('🔍 Fetching assigned patients for doctor:', userId);
+      const response = await apiClient.get(`/api/auth/doctor/patients?roles=user&assignedDoctor=${userId}`);
+      console.log('📊 Assigned patients response:', response.data);
       setAssignedPatients(response.data.users || []);
     } catch (error) {
-      console.error('Error fetching assigned patients:', error);
+      console.error('❌ Error fetching assigned patients:', error);
+      if (error.response?.status === 403) {
+        console.log('⚠️ Access denied - this feature requires doctor role');
+        toast.error('Access denied. This feature is only available for doctors.');
+      }
       setAssignedPatients([]);
     }
   };
@@ -119,7 +129,7 @@ const DoctorDashboard = () => {
         doctor: `${user.firstName} ${user.lastName}`
       };
 
-      await axios.put(`/api/auth/users/${selectedPatient._id}/medical-record`, recordData);
+      await apiClient.put(`/api/auth/users/${selectedPatient._id}/medical-record`, recordData);
       
       toast.success('Medical record added successfully');
       setShowMedicalRecordModal(false);
@@ -154,7 +164,7 @@ const DoctorDashboard = () => {
         status: 'Active'
       };
 
-      await axios.put(`/api/auth/users/${selectedPatient._id}/prescription`, prescriptionData);
+      await apiClient.put(`/api/auth/users/${selectedPatient._id}/prescription`, prescriptionData);
       
       toast.success('Prescription added successfully');
       setShowPrescriptionModal(false);
@@ -221,6 +231,26 @@ const DoctorDashboard = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // Check if user is a doctor
+  if (user?.role !== 'doctor') {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Stethoscope className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Doctor Dashboard</h2>
+          <p className="text-gray-600 mb-4">This dashboard is only available for doctors.</p>
+          <p className="text-sm text-gray-500">Current role: {user?.role || 'Unknown'}</p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Go to Main Dashboard
+          </button>
+        </div>
       </div>
     );
   }
