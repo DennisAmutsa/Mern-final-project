@@ -19,6 +19,21 @@ A comprehensive hospital management system built for **SDG 3: Good Health and We
 - **Resource Management**: Optimize medical supplies and equipment usage
 - **Impact Reporting**: Generate reports for sustainable development goals
 
+   **LIVE LINK WHERE THE PROJECT IS LIVE**
+
+- **LIVE LINK FOR LOGIN AND REGISTER DETAILS FOR ADMIN RECEPTIONIST AND  DOCTOR RIGHT HERE
+
+https://mern-final-project-g1oj.vercel.app/
+
+Final project
+Username: June
+Password: junealex
+Username:  dennis 
+Password:  dennis
+email:    dan@gmail.com 
+Password: DanOwino
+Check on case sensitivity**:
+
 ## 🛠️ Tech Stack
 
 ### Backend
@@ -164,9 +179,6 @@ The system tracks key indicators aligned with SDG 3:
 - Age group distribution
 - Geographic coverage mapping
 
-## 📱 Screenshots
-
-*[Screenshots will be added here]*
 
 ## 🤝 Contributing
 
