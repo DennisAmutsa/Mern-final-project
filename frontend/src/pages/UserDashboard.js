@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
 
 const UserDashboard = () => {
@@ -83,17 +83,23 @@ const UserDashboard = () => {
 
   const fetchPatientData = async () => {
     try {
-      const response = await axios.get('/api/auth/profile');
-      const userData = response.data.user;
+      const response = await apiClient.get('/api/auth/profile');
+      const userData = response.data?.user;
+      
+      if (!userData) {
+        console.error('No user data received from profile endpoint');
+        setPatientData(null);
+        return;
+      }
       
       const patientData = {
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        email: userData.email,
-        phone: userData.contactInfo?.phone,
-        bloodType: userData.bloodType,
-        emergencyContact: userData.emergencyContact,
-        insurance: userData.insurance
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
+        email: userData.email || '',
+        phone: userData.contactInfo?.phone || '',
+        bloodType: userData.bloodType || '',
+        emergencyContact: userData.emergencyContact || {},
+        insurance: userData.insurance || {}
       };
       
       setPatientData(patientData);
@@ -105,7 +111,7 @@ const UserDashboard = () => {
 
   const fetchPatientStats = async () => {
     try {
-      const response = await axios.get('/api/stats/user-dashboard');
+      const response = await apiClient.get('/api/stats/user-dashboard');
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching patient stats:', error);
@@ -124,7 +130,7 @@ const UserDashboard = () => {
 
   const fetchRecentActivities = async () => {
     try {
-      const response = await axios.get('/api/audit-logs/user');
+      const response = await apiClient.get('/api/audit-logs/user');
       setRecentActivities(Array.isArray(response.data) ? response.data.slice(0, 5) : []);
     } catch (error) {
       console.error('Error fetching recent activities:', error);
@@ -134,7 +140,7 @@ const UserDashboard = () => {
 
   const fetchNotifications = async () => {
     try {
-      const response = await axios.get('/api/audit-logs/notifications/user');
+      const response = await apiClient.get('/api/audit-logs/notifications/user');
       setNotifications(Array.isArray(response.data) ? response.data.slice(0, 3) : []);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -144,7 +150,7 @@ const UserDashboard = () => {
 
   const fetchUpcomingAppointments = async () => {
     try {
-      const response = await axios.get(`/api/appointments/patient?email=${user?.email}`);
+      const response = await apiClient.get(`/api/appointments/patient?email=${user?.email}`);
       setUpcomingAppointments(Array.isArray(response.data) ? response.data.slice(0, 3) : []);
     } catch (error) {
       console.error('Error fetching upcoming appointments:', error);
@@ -155,8 +161,14 @@ const UserDashboard = () => {
   const fetchMedicalRecords = async () => {
     try {
       // Get medical records from user's medical history
-      const response = await axios.get('/api/auth/profile');
-      const userData = response.data.user;
+      const response = await apiClient.get('/api/auth/profile');
+      const userData = response.data?.user;
+      
+      if (!userData) {
+        console.error('No user data received for medical records');
+        setMedicalRecords([]);
+        return;
+      }
       
       if (userData.medicalHistory && userData.medicalHistory.length > 0) {
         // Convert medical history to the format expected by the UI
@@ -168,10 +180,10 @@ const UserDashboard = () => {
             type: record.type || 'Medical Record',
             date: new Date(record.date).toLocaleDateString(),
             doctor: record.doctor || 'Dr. Smith',
-            condition: record.condition,
-            diagnosis: record.diagnosis,
-            treatment: record.treatment,
-            notes: record.notes
+            condition: record.condition || '',
+            diagnosis: record.diagnosis || '',
+            treatment: record.treatment || '',
+            notes: record.notes || ''
           }));
         
         setMedicalRecords(records);
@@ -188,7 +200,13 @@ const UserDashboard = () => {
     try {
       // Get prescriptions from user's own profile data
       const response = await axios.get('/api/auth/profile');
-      const userData = response.data.user;
+      const userData = response.data?.user;
+      
+      if (!userData) {
+        console.error('No user data received for prescriptions');
+        setPrescriptions([]);
+        return;
+      }
       
       if (userData.currentMedications && userData.currentMedications.length > 0) {
         // Filter for active prescriptions and take the first 3
