@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Plus, User, Phone, Mail, Calendar, MapPin, Shield, Heart } from 'lucide-react';
-import axios from 'axios';
+import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
 
 const PAGE_SIZE = 10;
@@ -34,9 +34,12 @@ const Patients = () => {
         setLoading(true);
         setError('');
         try {
-          const res = await axios.get('/api/users?roles=user,patient');
+          console.log('🔍 Fetching patients with role: user');
+          const res = await apiClient.get('/api/users?roles=user');
+          console.log('📊 Patients response:', res.data);
           setPatients(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
+          console.error('❌ Error fetching patients:', err);
           setError('Failed to fetch patients.');
         } finally {
           setLoading(false);
@@ -46,7 +49,7 @@ const Patients = () => {
     } else if (user?.role === 'doctor') {
       // Fetch patients assigned to this doctor from users collection
       setLoading(true);
-      axios.get(`/api/users?roles=user,patient&assignedDoctor=${user._id}`)
+      apiClient.get(`/api/users?roles=user&assignedDoctor=${user._id}`)
         .then(res => {
           setPatients(Array.isArray(res.data) ? res.data : []);
         })
@@ -55,7 +58,7 @@ const Patients = () => {
     } else if (user?.role === 'nurse' || user?.role === 'receptionist') {
       // Fetch all patients for nurses and receptionists
       setLoading(true);
-      axios.get('/api/users?roles=user,patient')
+      apiClient.get('/api/users?roles=user')
         .then(res => {
           setPatients(Array.isArray(res.data) ? res.data : []);
         })
@@ -64,7 +67,7 @@ const Patients = () => {
     } else {
       // For regular users/patients - show their own profile
       if (user?.email) {
-        axios.get(`/api/users/profile?email=${user.email}`)
+        apiClient.get(`/api/users/profile?email=${user.email}`)
           .then(res => {
             setProfile(res.data);
             setForm(res.data);
@@ -78,7 +81,7 @@ const Patients = () => {
   // Fetch doctors for assignment (admin only)
   useEffect(() => {
     if (isAdmin) {
-      axios.get('/api/doctors')
+      apiClient.get('/api/doctors')
         .then(res => setDoctors(Array.isArray(res.data) ? res.data : []))
         .catch(() => setDoctors([]));
     }
@@ -223,8 +226,8 @@ const Patients = () => {
                           onChange={async (e) => {
                             const doctorId = e.target.value;
                             try {
-                              await axios.put(`/api/users/${p._id}/assign-doctor`, { doctorId });
-                              const res = await axios.get('/api/users?roles=user,patient');
+                                      await apiClient.put(`/api/users/${p._id}/assign-doctor`, { doctorId });
+        const res = await apiClient.get('/api/users?roles=user');
                               setPatients(Array.isArray(res.data) ? res.data : []);
                             } catch {
                               alert('Failed to assign doctor');
@@ -309,11 +312,11 @@ const Patients = () => {
                       status: editPatient.status,
                       assignedDoctor: typeof editPatient.assignedDoctor === 'object' ? editPatient.assignedDoctor._id : editPatient.assignedDoctor || ''
                     };
-                    await axios.put(`/api/users/profile/${editPatient._id}`, payload);
+                    await apiClient.put(`/api/users/profile/${editPatient._id}`, payload);
                     setEditPatient(null);
                     setSaving(false);
                     // Refresh patients
-                    const res = await axios.get('/api/users?roles=user,patient');
+                    const res = await apiClient.get('/api/users?roles=user');
                     setPatients(Array.isArray(res.data) ? res.data : []);
                   } catch (err) {
                     setSaving(false);
@@ -380,11 +383,11 @@ const Patients = () => {
                   onClick={async () => {
                     setSaving(true);
                     try {
-                      await axios.delete(`/api/users/${deletePatient._id}`);
+                      await apiClient.delete(`/api/users/${deletePatient._id}`);
                       setDeletePatient(null);
                       setSaving(false);
                       // Refresh patients
-                      const res = await axios.get('/api/users?roles=user,patient');
+                      const res = await apiClient.get('/api/users?roles=user');
                       setPatients(Array.isArray(res.data) ? res.data : []);
                     } catch (err) {
                       setSaving(false);
@@ -444,7 +447,7 @@ const Patients = () => {
                       status: 'Active'
                     };
                     
-                    await axios.post('/api/auth/register', patientData);
+                    await apiClient.post('/api/auth/register', patientData);
                     toast.success('Patient registered successfully!');
                     setShowAddModal(false);
                     setNewPatientForm({
@@ -463,7 +466,7 @@ const Patients = () => {
                     });
                     
                     // Refresh patients list
-                    const res = await axios.get('/api/users?roles=user,patient');
+                    const res = await apiClient.get('/api/users?roles=user');
                     setPatients(Array.isArray(res.data) ? res.data : []);
                   } catch (error) {
                     toast.error(error.response?.data?.error || 'Failed to register patient');

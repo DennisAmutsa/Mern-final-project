@@ -24,9 +24,12 @@ router.post('/register', [
   body('lastName').notEmpty().withMessage('Last name is required')
 ], async (req, res) => {
   try {
+    console.log('🔍 Registration request received:', { username: req.body.username, email: req.body.email, role: req.body.role });
+    
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ Validation errors:', errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
 
@@ -60,6 +63,7 @@ router.post('/register', [
     const user = new User(userData);
 
     await user.save();
+    console.log('✅ User registered successfully:', { id: user._id, email: user.email, role: user.role });
     await logAudit({ req, action: 'USER_REGISTER', description: `User ${user.email} registered`, status: 'SUCCESS' });
 
     res.status(201).json({

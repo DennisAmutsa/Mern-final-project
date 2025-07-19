@@ -8,10 +8,12 @@ const mongoose = require('mongoose');
 router.get('/', async (req, res) => {
   try {
     const { roles, assignedDoctor } = req.query;
+    console.log('🔍 Users GET request - roles:', roles, 'assignedDoctor:', assignedDoctor);
     let query = {};
     if (roles) {
       const rolesArray = roles.split(',').map(r => r.trim());
       query.role = { $in: rolesArray };
+      console.log('📋 Query roles:', rolesArray);
     }
     if (assignedDoctor) {
       // Match both ObjectId and string for robustness
@@ -24,6 +26,7 @@ router.get('/', async (req, res) => {
     const users = await User.find(query)
       .select('-password -resetPasswordToken -resetPasswordExpires')
       .populate('assignedDoctor', 'firstName lastName email department specialization');
+    console.log('📊 Found users:', users.length);
     res.json(users);
   } catch (error) {
     res.status(500).json({ error: error.message });
