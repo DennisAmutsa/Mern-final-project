@@ -44,10 +44,10 @@ import {
   ScatterChart,
   Scatter
 } from 'recharts';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import io from 'socket.io-client';
-import { API_BASE_URL, WS_BASE_URL } from '../config/api';
+import { WS_BASE_URL } from '../config/api';
+import apiClient from '../config/axios';
 
 const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E42', '#EF4444', '#6366F1', '#F472B6', '#FBBF24'];
 
@@ -128,8 +128,8 @@ const Stats = () => {
     setLoading(true);
     try {
       const [sdg3Res, deptRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/stats/sdg3-overview?days=${dateRange}&department=${selectedDepartment}`).then(r => r.data),
-        axios.get(`${API_BASE_URL}/api/stats/department-performance?days=${dateRange}`).then(r => r.data)
+        apiClient.get(`/api/stats/sdg3-overview?days=${dateRange}&department=${selectedDepartment}`).then(r => r.data),
+        apiClient.get(`/api/stats/department-performance?days=${dateRange}`).then(r => r.data)
       ]);
       setOverview(sdg3Res);
       setDepartments(deptRes);
@@ -147,11 +147,10 @@ const Stats = () => {
   const fetchFinancialData = async () => {
     setFinancialLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const [financialRes, budgetRes, billingRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/financial-reports`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API_BASE_URL}/api/budget`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API_BASE_URL}/api/billing`, { headers: { Authorization: `Bearer ${token}` } })
+        apiClient.get('/api/financial-reports'),
+        apiClient.get('/api/budget'),
+        apiClient.get('/api/billing')
       ]);
       setFinancialReports(Array.isArray(financialRes.data) ? financialRes.data : []);
       setBudgets(Array.isArray(budgetRes.data) ? budgetRes.data : []);

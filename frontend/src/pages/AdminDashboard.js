@@ -29,10 +29,9 @@ import {
   Filter
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, LineChart as RechartsLineChart, Line, AreaChart, Area } from 'recharts';
-import { API_BASE_URL } from '../config/api';
+import apiClient from '../config/axios';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
@@ -74,7 +73,7 @@ const AdminDashboard = () => {
       try {
         // Test API connection first
         console.log('Testing API connection...');
-        const testResponse = await axios.get(`${API_BASE_URL}/api/health`);
+        const testResponse = await apiClient.get('/api/health');
         console.log('API Health Check:', testResponse.data);
         
         fetchDashboardStats();
@@ -94,7 +93,7 @@ const AdminDashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/stats/dashboard`);
+      const response = await apiClient.get('/api/stats/dashboard');
       setStats(response.data);
     } catch (error) {
       toast.error('Failed to fetch dashboard statistics');
@@ -106,7 +105,7 @@ const AdminDashboard = () => {
 
   const fetchSystemStatus = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/health`);
+      const res = await apiClient.get('/api/health');
       setSystemStatus(res.data);
     } catch {
       setSystemStatus(null);
@@ -115,7 +114,7 @@ const AdminDashboard = () => {
 
   const fetchAlerts = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/audit-logs`);
+      const res = await apiClient.get('/api/audit-logs');
       setAlerts(Array.isArray(res.data) ? res.data.slice(0, 5) : []);
     } catch {
       setAlerts([]);
@@ -124,7 +123,7 @@ const AdminDashboard = () => {
 
   const fetchDepartments = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/departments`);
+      const res = await apiClient.get('/api/departments');
       setDepartments(Array.isArray(res.data) ? res.data : []);
     } catch {
       setDepartments([]);
@@ -136,11 +135,11 @@ const AdminDashboard = () => {
     try {
       const token = localStorage.getItem('token');
       const [usersRes, financialRes, budgetRes, appointmentsRes, departmentsRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/auth/users`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API_BASE_URL}/api/financial-reports`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API_BASE_URL}/api/budget`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API_BASE_URL}/api/appointments`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API_BASE_URL}/api/departments`, { headers: { Authorization: `Bearer ${token}` } })
+        apiClient.get('/api/auth/users'),
+        apiClient.get('/api/financial-reports'),
+        apiClient.get('/api/budget'),
+        apiClient.get('/api/appointments'),
+        apiClient.get('/api/departments')
       ]);
       setAllUsers(usersRes.data.users || []);
       setFinancialReports(Array.isArray(financialRes.data) ? financialRes.data : []);
@@ -404,7 +403,7 @@ const AdminDashboard = () => {
       color: 'bg-purple-500',
       action: async () => {
         try {
-          await axios.post('/api/backup/trigger');
+          await apiClient.post('/api/backup/trigger');
           toast.success('Backup triggered!');
           fetchSystemStatus();
         } catch {
@@ -1135,7 +1134,7 @@ const AdminDashboard = () => {
 
   async function addDoctor() {
     try {
-      await axios.post(`${API_BASE_URL}/api/doctors`, doctorForm);
+      await apiClient.post('/api/doctors', doctorForm);
       toast.success('Doctor added successfully!');
       setShowDoctorModal(false);
       setDoctorForm({ firstName: '', lastName: '', email: '', department: '', specialization: '', phone: '', password: '' });
@@ -1148,7 +1147,7 @@ const AdminDashboard = () => {
 
   async function createDepartment() {
     try {
-      await axios.post(`${API_BASE_URL}/api/departments`, deptForm);
+      await apiClient.post('/api/departments', deptForm);
       toast.success('Department created successfully!');
       setShowDepartmentModal(false);
       setDeptForm({ name: '', description: '', location: '', phone: '', email: '' });

@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
-import { API_BASE_URL } from '../config/api';
+import apiClient from '../config/axios';
 
 const AuthContext = createContext();
 
@@ -18,15 +17,12 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
 
-  // Set up axios interceptor for authentication
+  // Set up apiClient interceptor for authentication
   useEffect(() => {
-    // Set base URL for axios
-    axios.defaults.baseURL = API_BASE_URL;
-    
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } else {
-      delete axios.defaults.headers.common['Authorization'];
+      delete apiClient.defaults.headers.common['Authorization'];
     }
   }, [token]);
 
@@ -35,7 +31,7 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
       if (token) {
         try {
-          const response = await axios.get('/api/auth/profile');
+          const response = await apiClient.get('/api/auth/profile');
           setUser(response.data.user);
         } catch (error) {
           console.error('Auth check failed:', error);
@@ -50,7 +46,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const response = await axios.post('/api/auth/login', {
+      const response = await apiClient.post('/api/auth/login', {
         username,
         password
       });
@@ -72,7 +68,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await axios.post('/api/auth/register', userData);
+      const response = await apiClient.post('/api/auth/register', userData);
       
       toast.success('Registration successful! You can now login.');
       return { success: true };
@@ -87,7 +83,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
-    delete axios.defaults.headers.common['Authorization'];
+    delete apiClient.defaults.headers.common['Authorization'];
     toast.success('Logged out successfully');
     // Redirect to homepage instead of login
     window.location.href = '/';
@@ -95,7 +91,7 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (profileData) => {
     try {
-      const response = await axios.put('/api/auth/profile', profileData);
+      const response = await apiClient.put('/api/auth/profile', profileData);
       setUser(response.data.user);
       toast.success('Profile updated successfully!');
       return { success: true };
@@ -108,7 +104,7 @@ export const AuthProvider = ({ children }) => {
 
   const changePassword = async (currentPassword, newPassword) => {
     try {
-      await axios.put('/api/auth/change-password', {
+      await apiClient.put('/api/auth/change-password', {
         currentPassword,
         newPassword
       });
