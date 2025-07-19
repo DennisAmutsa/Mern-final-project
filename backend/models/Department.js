@@ -40,7 +40,7 @@ const departmentSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['active', 'inactive', 'maintenance'],
+    enum: ['active', 'inactive', 'maintenance', 'deleted'],
     default: 'active'
   },
   staffCount: {

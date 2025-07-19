@@ -112,7 +112,7 @@ const DepartmentManagement = () => {
     
     try {
       console.log('🔍 Deleting department:', departmentId);
-      await apiClient.delete(`/api/departments/${departmentId}`);
+      await apiClient.post(`/api/departments/${departmentId}/delete`);
       toast.success('Department deleted successfully');
       fetchDepartments();
     } catch (error) {

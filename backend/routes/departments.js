@@ -4,13 +4,16 @@ const Department = require('../models/Department');
 const { auth } = require('../middleware/auth');
 const admin = require('../middleware/admin');
 const User = require('../models/User');
+const Budget = require('../models/Budget');
+const Appointment = require('../models/Appointment');
 
 // @route   GET /api/departments
-// @desc    Get all departments
+// @desc    Get all departments (excluding deleted ones by default)
 // @access  Public (for now, can be made private later)
 router.get('/', async (req, res) => {
   try {
-    const departments = await Department.find()
+    // Filter out deleted departments by default
+    const departments = await Department.find({ status: { $ne: 'deleted' } })
       .populate('createdBy', 'firstName lastName email')
       .populate('updatedBy', 'firstName lastName email')
       .sort({ createdAt: -1 });
@@ -155,32 +158,61 @@ router.put('/:id', [auth, admin], async (req, res) => {
   }
 });
 
-// @route   DELETE /api/departments/:id
-// @desc    Delete department
+// @route   POST /api/departments/:id/delete
+// @desc    Delete department (soft delete by setting status to deleted)
 // @access  Private (Admin only)
-router.delete('/:id', [auth, admin], async (req, res) => {
+router.post('/:id/delete', [auth, admin], async (req, res) => {
   try {
+    console.log('🔍 Attempting to soft delete department:', req.params.id);
+    
+    // Find the department first
     const department = await Department.findById(req.params.id);
-
+    
     if (!department) {
+      console.log('❌ Department not found:', req.params.id);
       return res.status(404).json({ error: 'Department not found' });
     }
-
+    
+    console.log('📊 Department found:', department.name, 'Current status:', department.status);
+    
     // Check if department has staff assigned
     if (department.staffCount > 0) {
+      console.log('❌ Cannot delete department with staff assigned');
       return res.status(400).json({ 
         error: 'Cannot delete department with assigned staff. Please reassign staff first.' 
       });
     }
-
-    await department.remove();
-    res.json({ message: 'Department removed successfully' });
+    
+    // Instead of hard delete, set status to 'deleted' (soft delete)
+    department.status = 'deleted';
+    department.updatedBy = req.user.id;
+    await department.save();
+    
+    console.log('✅ Department soft deleted successfully:', department.name);
+    res.json({ 
+      message: 'Department removed successfully', 
+      deletedDepartment: department.name,
+      note: 'Department has been marked as deleted and will not appear in active lists'
+    });
   } catch (error) {
-    console.error('Error deleting department:', error);
-    if (error.kind === 'ObjectId') {
-      return res.status(404).json({ error: 'Department not found' });
-    }
-    res.status(500).json({ error: 'Server error' });
+    console.error('❌ Error soft deleting department:', error);
+    res.status(500).json({ error: 'Server error', details: error.message });
+  }
+});
+
+// @route   DELETE /api/departments/:id
+// @desc    Delete department (legacy route - redirects to POST)
+// @access  Private (Admin only)
+router.delete('/:id', [auth, admin], async (req, res) => {
+  try {
+    console.log('🔍 DELETE route called, redirecting to POST delete...');
+    // Redirect to the POST delete route
+    req.method = 'POST';
+    req.url = `${req.params.id}/delete`;
+    return res.redirect(307, `/api/departments/${req.params.id}/delete`);
+  } catch (error) {
+    console.error('❌ Error in DELETE route:', error);
+    res.status(500).json({ error: 'Server error', details: error.message });
   }
 });
 
