@@ -199,7 +199,7 @@ const UserDashboard = () => {
   const fetchPrescriptions = async () => {
     try {
       // Get prescriptions from user's own profile data
-      const response = await axios.get('/api/auth/profile');
+      const response = await apiClient.get('/api/auth/profile');
       const userData = response.data?.user;
       
       if (!userData) {
@@ -282,7 +282,7 @@ const UserDashboard = () => {
     }
     try {
       // Update user profile with all health info
-      const response = await axios.put('/api/auth/profile', {
+      const response = await apiClient.put('/api/auth/profile', {
         firstName: healthForm.firstName,
         lastName: healthForm.lastName,
         email: healthForm.email,

@@ -11,7 +11,7 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
-import axios from 'axios';
+import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
 
 const SystemSettings = () => {
@@ -65,7 +65,7 @@ const SystemSettings = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await axios.get('/api/settings');
+      const response = await apiClient.get('/api/settings');
       setSettings(response.data);
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -78,7 +78,7 @@ const SystemSettings = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await axios.put('/api/settings', settings);
+      await apiClient.put('/api/settings', settings);
       toast.success('Settings saved successfully');
     } catch (error) {
       toast.error('Failed to save settings');

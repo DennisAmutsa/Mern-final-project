@@ -11,7 +11,7 @@ import {
   FileText
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
 
 const ReceptionistDashboard = () => {
@@ -25,7 +25,7 @@ const ReceptionistDashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await axios.get('/api/stats/receptionist-dashboard');
+      const response = await apiClient.get('/api/stats/receptionist-dashboard');
       setStats(response.data);
     } catch (error) {
       toast.error('Failed to fetch dashboard statistics');

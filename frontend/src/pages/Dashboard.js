@@ -13,7 +13,7 @@ import {
   Wifi,
   WifiOff
 } from 'lucide-react';
-import axios from 'axios';
+import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
@@ -76,7 +76,7 @@ const Dashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await axios.get('/api/stats/dashboard');
+      const response = await apiClient.get('/api/stats/dashboard');
       setStats(response.data);
     } catch (error) {
       toast.error('Failed to fetch dashboard statistics');
