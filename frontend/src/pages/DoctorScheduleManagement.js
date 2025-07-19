@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, UserCheck, Save, Edit, Plus, Trash2, AlertCircle } from 'lucide-react';
-import axios from 'axios';
+import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
@@ -17,10 +17,12 @@ const DoctorScheduleManagement = () => {
 
   const fetchDoctors = async () => {
     try {
-      const response = await axios.get('/api/doctors');
+      console.log('🔍 Fetching doctors...');
+      const response = await apiClient.get('/api/doctors');
+      console.log('📊 Doctors response:', response.data);
       setDoctors(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error('Error fetching doctors:', error);
+      console.error('❌ Error fetching doctors:', error);
       toast.error('Failed to fetch doctors');
     } finally {
       setLoading(false);
@@ -32,16 +34,18 @@ const DoctorScheduleManagement = () => {
     
     try {
       setSaving(true);
-      await axios.put(`/api/doctors/${selectedDoctor._id}/schedule`, {
+      console.log('🔍 Saving schedule for doctor:', selectedDoctor._id);
+      await apiClient.put(`/api/doctors/${selectedDoctor._id}/schedule`, {
         schedule: selectedDoctor.schedule,
         leaveDays: selectedDoctor.leaveDays || [],
         isOnLeave: selectedDoctor.isOnLeave || false
       });
       
+      console.log('✅ Schedule saved successfully');
       toast.success('Doctor schedule updated successfully!');
       fetchDoctors(); // Refresh the list
     } catch (error) {
-      console.error('Error updating schedule:', error);
+      console.error('❌ Error updating schedule:', error);
       toast.error('Failed to update schedule');
     } finally {
       setSaving(false);

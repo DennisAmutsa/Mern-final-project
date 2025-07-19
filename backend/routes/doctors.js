@@ -55,6 +55,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // Get all doctors with their schedules
 router.get('/', async (req, res) => {
   try {
+    console.log('🔍 Doctors GET request received');
     const { roles } = req.query;
     let query = { role: 'doctor' };
     
@@ -63,13 +64,16 @@ router.get('/', async (req, res) => {
       query.role = { $in: roleArray };
     }
     
+    console.log('📋 Query:', query);
     const doctors = await User.find(query)
       .select('-password -resetPasswordToken -resetPasswordExpires')
       .populate('assignedDoctor', 'firstName lastName')
       .lean();
     
+    console.log('📊 Found doctors:', doctors.length);
     res.json(doctors);
   } catch (error) {
+    console.error('❌ Error fetching doctors:', error);
     res.status(500).json({ error: error.message });
   }
 });
