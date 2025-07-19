@@ -32,6 +32,7 @@ import BackupRestore from './pages/BackupRestore';
 import MyProfile from './pages/MyProfile';
 import DoctorSchedule from './pages/DoctorSchedule';
 import DoctorScheduleManagement from './pages/DoctorScheduleManagement';
+import TestAPI from './pages/TestAPI';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -157,6 +158,7 @@ function AppRoutes() {
         <Route path="billing" element={<BillingOverview />} />
         <Route path="budget-reports" element={<BudgetReports />} />
         <Route path="financial-reports" element={<FinancialReports />} />
+        <Route path="test-api" element={<TestAPI />} />
       </Route>
 
       <Route path="/doctor-dashboard" element={

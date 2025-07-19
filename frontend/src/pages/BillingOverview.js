@@ -38,12 +38,25 @@ export default function BillingOverview() {
   const fetchBills = () => {
     setLoading(true);
     const token = localStorage.getItem('token');
+    
+    // Debug logging
+    console.log('Fetching bills from:', apiClient.defaults.baseURL + '/api/billing');
+    console.log('Token available:', !!token);
+    
     apiClient.get('/api/billing')
       .then(res => {
+        console.log('Bills API Response:', res.data);
         setBills(Array.isArray(res.data) ? res.data : []);
       })
       .catch((error) => {
         console.error('Error fetching bills:', error);
+        console.error('Error details:', {
+          message: error.message,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          url: error.config?.url,
+          data: error.response?.data
+        });
         setBills([]);
       })
       .finally(() => setLoading(false));

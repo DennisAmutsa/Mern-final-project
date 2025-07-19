@@ -16,9 +16,12 @@ function financeOrAdmin(req, res, next) {
 // Get all bills
 router.get('/', auth, async (req, res) => {
   try {
+    console.log('Billing GET request received from user:', req.user?.email);
     const bills = await Bill.find().populate('patient', 'firstName lastName patientId').populate('createdBy', 'firstName lastName role');
+    console.log('Found bills:', bills.length);
     res.json(bills);
   } catch (error) {
+    console.error('Error in billing GET route:', error);
     res.status(500).json({ error: error.message });
   }
 });

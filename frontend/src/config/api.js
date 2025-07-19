@@ -1,24 +1,15 @@
 // API Configuration
-// Use environment variable if available, otherwise fall back to default
-const isDevelopment = process.env.NODE_ENV === 'development' && window.location.hostname === 'localhost';
+// Always use Render backend for both development and production
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://mern-final-project-bres.onrender.com';
 
-// Check for environment variable first
-const API_BASE_URL = process.env.REACT_APP_API_URL || (
-  isDevelopment 
-    ? 'http://localhost:5000' // Use local backend only in development
-    : '' // Use relative URLs in production (works with Vercel rewrites)
-);
-
-const WS_BASE_URL = process.env.REACT_APP_WS_URL || (
-  isDevelopment
-    ? 'http://localhost:5000'
-    : 'https://mern-final-project-bres.onrender.com'
-);
+const WS_BASE_URL = process.env.REACT_APP_WS_URL || 'https://mern-final-project-bres.onrender.com';
 
 // For debugging - log the current API URL
+console.log('🔧 API Configuration Debug:');
 console.log('Current NODE_ENV:', process.env.NODE_ENV);
 console.log('Current hostname:', window.location.hostname);
-console.log('Is development:', isDevelopment);
-console.log('Current API_BASE_URL:', API_BASE_URL);
+console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+console.log('Final API_BASE_URL:', API_BASE_URL);
+console.log('Final WS_BASE_URL:', WS_BASE_URL);
 
 export { API_BASE_URL, WS_BASE_URL }; 

@@ -37,12 +37,25 @@ export default function BudgetReports() {
   const fetchBudgets = () => {
     setLoading(true);
     const token = localStorage.getItem('token');
+    
+    // Debug logging
+    console.log('Fetching budgets from:', apiClient.defaults.baseURL + '/api/budget');
+    console.log('Token available:', !!token);
+    
     apiClient.get('/api/budget')
       .then(res => {
+        console.log('Budgets API Response:', res.data);
         setBudgets(Array.isArray(res.data) ? res.data : []);
       })
       .catch((error) => {
         console.error('Error fetching budgets:', error);
+        console.error('Error details:', {
+          message: error.message,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          url: error.config?.url,
+          data: error.response?.data
+        });
         setBudgets([]);
       })
       .finally(() => setLoading(false));

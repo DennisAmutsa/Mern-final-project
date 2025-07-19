@@ -24,7 +24,8 @@ import {
   ChevronRight,
   Settings,
   Building,
-  Database
+  Database,
+  Activity
 } from 'lucide-react';
 
 const adminGroups = [
@@ -56,6 +57,7 @@ const adminGroups = [
       { name: 'System Settings', href: '/admin-dashboard/settings', icon: Settings },
       { name: 'Audit Logs', href: '/admin-dashboard/audit', icon: FileText },
       { name: 'Backup & Restore', href: '/admin-dashboard/backup', icon: Database },
+      { name: 'Test API', href: '/admin-dashboard/test-api', icon: Activity },
     ]
   },
   {

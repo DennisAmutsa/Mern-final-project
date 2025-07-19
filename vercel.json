@@ -1,10 +1,4 @@
 {
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "https://mern-final-project-bres.onrender.com/api/$1"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",

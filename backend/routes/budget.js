@@ -15,9 +15,12 @@ function financeOrAdmin(req, res, next) {
 // Get all budgets
 router.get('/', auth, async (req, res) => {
   try {
+    console.log('Budget GET request received from user:', req.user?.email);
     const budgets = await Budget.find().populate('department', 'name').populate('createdBy', 'firstName lastName role');
+    console.log('Found budgets:', budgets.length);
     res.json(budgets);
   } catch (error) {
+    console.error('Error in budget GET route:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -117,6 +117,16 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Test endpoint for debugging
+app.get('/api/test', (req, res) => {
+  res.json({
+    message: 'API is working!',
+    timestamp: new Date().toISOString(),
+    headers: req.headers,
+    userAgent: req.get('User-Agent')
+  });
+});
+
 // Serve static files from the React app build directory
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/build')));

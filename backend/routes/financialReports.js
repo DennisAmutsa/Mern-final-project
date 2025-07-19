@@ -14,9 +14,12 @@ function financeOrAdmin(req, res, next) {
 // Get all reports
 router.get('/', auth, async (req, res) => {
   try {
+    console.log('Financial Reports GET request received from user:', req.user?.email);
     const reports = await FinancialReport.find().populate('createdBy', 'firstName lastName role');
+    console.log('Found reports:', reports.length);
     res.json(reports);
   } catch (error) {
+    console.error('Error in financial reports GET route:', error);
     res.status(500).json({ error: error.message });
   }
 });
