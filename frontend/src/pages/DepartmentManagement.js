@@ -14,7 +14,7 @@ import {
   Mail,
   UserPlus
 } from 'lucide-react';
-import axios from 'axios';
+import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
 
 const DepartmentManagement = () => {
@@ -49,11 +49,14 @@ const DepartmentManagement = () => {
 
   const fetchDepartments = async () => {
     try {
-      const response = await axios.get('/api/departments');
-      setDepartments(response.data);
+      console.log('🔍 Fetching departments...');
+      const response = await apiClient.get('/api/departments');
+      console.log('📊 Departments response:', response.data);
+      setDepartments(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
+      console.error('❌ Error fetching departments:', error);
       toast.error('Failed to fetch departments');
-      console.error('Error fetching departments:', error);
+      setDepartments([]); // Ensure it's always an array
     } finally {
       setLoading(false);
     }
@@ -62,11 +65,12 @@ const DepartmentManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      console.log('🔍 Submitting department:', formData);
       if (showEditModal) {
-        await axios.put(`/api/departments/${selectedDepartment._id}`, formData);
+        await apiClient.put(`/api/departments/${selectedDepartment._id}`, formData);
         toast.success('Department updated successfully');
       } else {
-        await axios.post('/api/departments', formData);
+        await apiClient.post('/api/departments', formData);
         toast.success('Department created successfully');
       }
       setShowAddModal(false);
@@ -83,6 +87,7 @@ const DepartmentManagement = () => {
       });
       fetchDepartments();
     } catch (error) {
+      console.error('❌ Error submitting department:', error);
       toast.error(error.response?.data?.error || 'Operation failed');
     }
   };
@@ -106,10 +111,12 @@ const DepartmentManagement = () => {
     if (!window.confirm('Are you sure you want to delete this department?')) return;
     
     try {
-      await axios.delete(`/api/departments/${departmentId}`);
+      console.log('🔍 Deleting department:', departmentId);
+      await apiClient.delete(`/api/departments/${departmentId}`);
       toast.success('Department deleted successfully');
       fetchDepartments();
     } catch (error) {
+      console.error('❌ Error deleting department:', error);
       toast.error('Failed to delete department');
     }
   };
@@ -119,12 +126,16 @@ const DepartmentManagement = () => {
     setShowAssignModal(true);
     setAssignLoading(true);
     try {
-      const res = await axios.get('/api/auth/users?roles=doctor,nurse,receptionist,pharmacist,staff');
+      console.log('🔍 Fetching staff for department assignment...');
+      const res = await apiClient.get('/api/users?roles=doctor,nurse,receptionist,pharmacist,staff');
+      console.log('📊 Staff response:', res.data);
       const allowedRoles = ['doctor', 'nurse', 'receptionist', 'pharmacist', 'staff'];
-      setStaffList((res.data.users || []).filter(user => allowedRoles.includes(user.role)));
+      setStaffList(Array.isArray(res.data) ? res.data.filter(user => allowedRoles.includes(user.role)) : []);
       setSelectedStaff([]);
     } catch (err) {
+      console.error('❌ Error fetching staff:', err);
       toast.error('Failed to fetch staff');
+      setStaffList([]);
     } finally {
       setAssignLoading(false);
     }
@@ -134,19 +145,21 @@ const DepartmentManagement = () => {
     if (!assigningDepartment || selectedStaff.length === 0) return;
     setAssignLoading(true);
     try {
-      await axios.post(`/api/departments/${assigningDepartment._id}/assign-staff`, { staffIds: selectedStaff });
+      console.log('🔍 Assigning staff to department:', assigningDepartment._id, selectedStaff);
+      await apiClient.post(`/api/departments/${assigningDepartment._id}/assign-staff`, { staffIds: selectedStaff });
       toast.success('Staff assigned successfully');
       setShowAssignModal(false);
       setAssigningDepartment(null);
       fetchDepartments();
     } catch (err) {
+      console.error('❌ Error assigning staff:', err);
       toast.error('Failed to assign staff');
     } finally {
       setAssignLoading(false);
     }
   };
 
-  const filteredDepartments = departments.filter(dept => {
+  const filteredDepartments = (Array.isArray(departments) ? departments : []).filter(dept => {
     const matchesSearch = dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          dept.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = !filterStatus || dept.status === filterStatus;
