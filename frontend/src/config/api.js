@@ -6,7 +6,7 @@ const isDevelopment = process.env.NODE_ENV === 'development' && window.location.
 const API_BASE_URL = process.env.REACT_APP_API_URL || (
   isDevelopment 
     ? 'http://localhost:5000' // Use local backend only in development
-    : 'https://mern-final-project-bres.onrender.com' // Use Render backend in production
+    : '' // Use relative URLs in production (works with Vercel rewrites)
 );
 
 const WS_BASE_URL = process.env.REACT_APP_WS_URL || (
