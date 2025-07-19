@@ -13,7 +13,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
 
 const MyProfile = () => {
@@ -65,7 +65,7 @@ const MyProfile = () => {
 
     setLoading(true);
     try {
-      const response = await axios.put('/api/auth/profile', {
+      const response = await apiClient.put('/api/auth/profile', {
         firstName: profileData.firstName,
         lastName: profileData.lastName,
         email: profileData.email,

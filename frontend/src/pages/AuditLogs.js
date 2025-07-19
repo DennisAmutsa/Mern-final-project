@@ -13,7 +13,7 @@ import {
   Activity,
   Shield
 } from 'lucide-react';
-import axios from 'axios';
+import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
 
 const AuditLogs = () => {
@@ -32,7 +32,7 @@ const AuditLogs = () => {
 
   const fetchAuditLogs = async () => {
     try {
-      const response = await axios.get('/api/audit-logs');
+      const response = await apiClient.get('/api/audit-logs');
       // Always set logs to an array
       if (Array.isArray(response.data)) {
         setLogs(response.data);

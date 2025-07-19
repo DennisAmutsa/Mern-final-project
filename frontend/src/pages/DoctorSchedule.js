@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, UserCheck, Search, Filter, Plus, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
-import axios from 'axios';
+import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
 
 const DoctorSchedule = () => {
@@ -19,7 +19,7 @@ const DoctorSchedule = () => {
 
   const fetchDoctors = async () => {
     try {
-      const response = await axios.get('/api/doctors');
+      const response = await apiClient.get('/api/doctors');
       setDoctors(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching doctors:', error);
@@ -33,7 +33,7 @@ const DoctorSchedule = () => {
       const dateParam = selectedDate ? `&date=${selectedDate}` : '';
       const doctorParam = selectedDoctor ? `&doctor=${selectedDoctor}` : '';
       
-      const response = await axios.get(`/api/appointments?${dateParam}${doctorParam}`);
+      const response = await apiClient.get(`/api/appointments?${dateParam}${doctorParam}`);
       const appointmentsData = Array.isArray(response.data) ? response.data : 
                              response.data.appointments || [];
       setAppointments(appointmentsData);

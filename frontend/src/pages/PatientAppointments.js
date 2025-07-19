@@ -14,7 +14,7 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
-import axios from 'axios';
+import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
@@ -49,7 +49,7 @@ const PatientAppointments = () => {
 
   const fetchAppointments = async () => {
     try {
-      const response = await axios.get(`/api/appointments/patient?email=${user?.email}`);
+      const response = await apiClient.get(`/api/appointments/patient?email=${user?.email}`);
       setAppointments(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching appointments:', error);
@@ -61,7 +61,7 @@ const PatientAppointments = () => {
 
   const fetchDoctors = async () => {
     try {
-      const response = await axios.get('/api/doctors');
+      const response = await apiClient.get('/api/doctors');
       setDoctors(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching doctors:', error);
@@ -71,7 +71,7 @@ const PatientAppointments = () => {
 
   const fetchAvailableSlots = async (doctorId, date) => {
     try {
-      const response = await axios.get(`/api/appointments/available-slots?doctor=${doctorId}&date=${date}`);
+      const response = await apiClient.get(`/api/appointments/available-slots?doctor=${doctorId}&date=${date}`);
       setAvailableSlots(response.data);
     } catch (error) {
       console.error('Error fetching available slots:', error);
@@ -90,7 +90,7 @@ const PatientAppointments = () => {
         reason: 'General Consultation' // Add default reason for backend validation
       };
 
-      await axios.post('/api/appointments', appointmentData);
+      await apiClient.post('/api/appointments', appointmentData);
       
       toast.success('Appointment booked successfully!');
       setShowBookingModal(false);
@@ -109,7 +109,7 @@ const PatientAppointments = () => {
 
   const cancelAppointment = async (appointmentId) => {
     try {
-      await axios.put(`/api/appointments/${appointmentId}/status`, { status: 'Cancelled' });
+      await apiClient.put(`/api/appointments/${appointmentId}/status`, { status: 'Cancelled' });
       toast.success('Appointment cancelled successfully!');
       fetchAppointments();
     } catch (error) {
