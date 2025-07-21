@@ -19,8 +19,10 @@ A comprehensive hospital management system built for **SDG 3: Good Health and We
 - **Resource Management**: Optimize medical supplies and equipment usage
 - **Impact Reporting**: Generate reports for sustainable development goals
 
-   **LIVE LINK WHERE THE PROJECT IS LIVE**
-
+   
+   **LIVE LINK for the video right here **
+https://drive.google.com/file/d/1O-rJWKn-6Az6yixopsasCr8rOin5RJTx/view?usp=drive_link
+**LIVE LINK WHERE THE PROJECT IS LIVE**
 - **LIVE LINK FOR LOGIN AND REGISTER DETAILS FOR ADMIN RECEPTIONIST AND  DOCTOR RIGHT HERE
 
 https://mern-final-project-g1oj.vercel.app/
