@@ -22,6 +22,8 @@ A comprehensive hospital management system built for **SDG 3: Good Health and We
    
    **LIVE LINK for the video right here **
 https://drive.google.com/file/d/1O-rJWKn-6Az6yixopsasCr8rOin5RJTx/view?usp=drive_link
+
+
 **LIVE LINK WHERE THE PROJECT IS LIVE**
 - **LIVE LINK FOR LOGIN AND REGISTER DETAILS FOR ADMIN RECEPTIONIST AND  DOCTOR RIGHT HERE
 
