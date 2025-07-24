@@ -18,7 +18,8 @@ A comprehensive hospital management system built for **SDG 3: Good Health and We
 - **Emergency Response**: Manage urgent care and critical cases
 - **Resource Management**: Optimize medical supplies and equipment usage
 - **Impact Reporting**: Generate reports for sustainable development goals
-
+-  **pitch deck link** 
+-   https://www.canva.com/design/DAGuEuXhLaI/SXkTchDL_UwTpYeQ9z0guQ/edit?utm_content=DAGuEuXhLaI&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
    
    **LIVE LINK for the video right here **
 https://drive.google.com/file/d/1O-rJWKn-6Az6yixopsasCr8rOin5RJTx/view?usp=drive_link
