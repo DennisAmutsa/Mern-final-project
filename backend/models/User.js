@@ -120,8 +120,73 @@ const userSchema = new mongoose.Schema({
     endDate: Date,
     status: {
       type: String,
-      enum: ['Active', 'Completed', 'Discontinued'],
+      enum: ['Active', 'On Hold', 'Completed', 'Discontinued'],
       default: 'Active'
+    },
+    notes: String,
+    lastAdministered: Date,
+    lastAdministeredBy: String,
+    statusUpdatedAt: Date,
+    statusUpdatedBy: String
+  }],
+  medicationAdministrations: [{
+    medicationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true
+    },
+    administeredAt: {
+      type: Date,
+      required: true
+    },
+    notes: {
+      type: String,
+      required: true
+    },
+    status: {
+      type: String,
+      enum: ['Administered', 'Refused', 'Missed', 'Delayed'],
+      required: true
+    },
+    administeredBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    administeredByUser: String,
+    recordedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  adverseReactions: [{
+    medicationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true
+    },
+    reaction: {
+      type: String,
+      required: true
+    },
+    severity: {
+      type: String,
+      enum: ['Mild', 'Moderate', 'Severe', 'Life-threatening'],
+      required: true
+    },
+    symptoms: {
+      type: String,
+      required: true
+    },
+    actionTaken: String,
+    reportedTo: String,
+    reportedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    reportedByUser: String,
+    reportedAt: {
+      type: Date,
+      default: Date.now
     }
   }],
   isActive: {
