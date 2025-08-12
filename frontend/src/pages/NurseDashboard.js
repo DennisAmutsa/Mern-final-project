@@ -191,6 +191,9 @@ const NurseDashboard = () => {
       case 'inventory':
         navigate('/nurse-dashboard/inventory');
         break;
+      case 'medications':
+        navigate('/nurse-dashboard/medications');
+        break;
       case 'vitals':
         setShowAddVitals(true);
         break;
@@ -700,7 +703,7 @@ const NurseDashboard = () => {
             <AlertTriangle className="h-6 w-6 text-red-600 mb-2" />
             <span className="text-sm font-medium text-gray-900">Emergency</span>
           </button>
-              <button className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors" onClick={() => handleQuickAction('inventory')}>
+              <button className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors" onClick={() => handleQuickAction('medications')}>
                 <Syringe className="h-6 w-6 text-purple-600 mb-2" />
             <span className="text-sm font-medium text-gray-900">Medications</span>
           </button>
