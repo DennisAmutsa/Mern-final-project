@@ -52,7 +52,7 @@ const Emergency = () => {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return res.json();
       }),
-      fetch(`${API_BASE_URL}/api/patients?limit=1000`, {
+      fetch(`${API_BASE_URL}/api/users?roles=user,patient&limit=1000`, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         }
@@ -76,7 +76,7 @@ const Emergency = () => {
         resolvedToday: statsData.resolvedToday || 0,
         availableStaff: statsData.availableStaff || 0
       });
-      setPatients(Array.isArray(patientsData.patients) ? patientsData.patients : (Array.isArray(patientsData) ? patientsData : []));
+      setPatients(Array.isArray(patientsData) ? patientsData : []);
       setDoctors(Array.isArray(doctorsData.doctors) ? doctorsData.doctors : (Array.isArray(doctorsData) ? doctorsData : []));
     }).catch((error) => {
       console.error('Error fetching emergency data:', error);
@@ -492,7 +492,7 @@ const Emergency = () => {
                 <select required value={addForm.patientId} onChange={e => setAddForm(f => ({ ...f, patientId: e.target.value }))} className="w-full border rounded px-3 py-2">
                   <option value="">Select Patient</option>
                   {patients.map(p => (
-                    <option key={p._id} value={p._id}>{p.firstName} {p.lastName} ({p.patientId})</option>
+                    <option key={p._id} value={p._id}>{p.firstName} {p.lastName} ({p.email})</option>
                   ))}
                 </select>
               </div>

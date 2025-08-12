@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Patient = require('../models/Patient');
+const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const Appointment = require('../models/Appointment');
 
@@ -44,35 +45,73 @@ router.post('/', async (req, res) => {
   try {
     const { patientId, emergencyType, severity, symptoms, assignedDoctor } = req.body;
     
-    // Update patient status to emergency
-    const patient = await Patient.findByIdAndUpdate(
-      patientId,
-      { 
-        status: 'Emergency',
-        department: 'Emergency'
-      },
-      { new: true }
-    );
+    console.log('🔍 Emergency creation request:', { patientId, emergencyType, severity, symptoms, assignedDoctor });
     
-    if (!patient) {
-      return res.status(404).json({ error: 'Patient not found' });
+    // First try to find a patient record
+    let patient = await Patient.findById(patientId);
+    console.log('🔍 Found existing patient:', patient ? 'Yes' : 'No');
+    
+         // If no patient record, try to find a user with role 'user'
+     if (!patient) {
+       console.log('🔍 Looking for user with ID:', patientId);
+       const user = await User.findById(patientId);
+       console.log('🔍 Found user:', user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user found');
+       
+               if (!user || (user.role !== 'user' && user.role !== 'patient')) {
+          console.log('❌ User not found or not a patient user (role:', user?.role, ')');
+          return res.status(404).json({ error: 'Patient not found' });
+        }
+      
+      // Create a patient record from the user data
+      patient = new Patient({
+        patientId: user.username || `P${Date.now().toString().slice(-6)}`,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        dateOfBirth: user.dateOfBirth || new Date('1990-01-01'),
+        gender: user.gender || 'Other',
+        bloodType: user.bloodType || 'O+',
+                 contactInfo: {
+           phone: user.contactInfo?.phone || '000-000-0000', // Provide default phone if missing
+           email: user.email,
+           address: user.contactInfo?.address || {}
+         },
+        emergencyContact: user.emergencyContact || {},
+        insurance: user.insurance || {},
+        status: 'Emergency',
+        department: 'Emergency',
+        assignedDoctor: user.assignedDoctor
+      });
+      
+      await patient.save();
+      console.log('✅ Created new patient record from user:', patient.patientId);
+    } else {
+      // Update existing patient status to emergency
+      patient = await Patient.findByIdAndUpdate(
+        patientId,
+        { 
+          status: 'Emergency',
+          department: 'Emergency'
+        },
+        { new: true }
+      );
     }
     
-    // Create emergency appointment
-    const emergencyAppointment = new Appointment({
-      patient: patientId,
-      doctor: assignedDoctor,
-      appointmentDate: new Date(),
-      appointmentTime: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-      type: 'Emergency',
-      status: 'In Progress',
-      priority: severity === 'Critical' ? 'Emergency' : 'High',
-      reason: emergencyType,
-      symptoms: symptoms,
-      department: 'Emergency'
-    });
+         // Create emergency appointment
+     const emergencyAppointment = new Appointment({
+       patient: patientId, // Use the original user ID, not the patient record ID
+       doctor: assignedDoctor,
+       appointmentDate: new Date(),
+       appointmentTime: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+       type: 'Emergency',
+       status: 'In Progress',
+       priority: severity === 'Critical' ? 'Emergency' : 'High',
+       reason: emergencyType,
+       symptoms: symptoms,
+       department: 'Emergency'
+     });
     
     await emergencyAppointment.save();
+    console.log('✅ Created emergency appointment for patient:', patient._id);
     
     // Emit real-time update to all connected clients
     if (global.io) {
@@ -95,6 +134,8 @@ router.post('/', async (req, res) => {
       appointment: emergencyAppointment
     });
   } catch (error) {
+    console.error('❌ Error creating emergency:', error);
+    console.error('❌ Error stack:', error.stack);
     res.status(400).json({ error: error.message });
   }
 });
