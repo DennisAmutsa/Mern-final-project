@@ -288,6 +288,12 @@ const NurseDashboard = () => {
 
   const currentSection = getCurrentSection();
 
+  useEffect(() => {
+    if (currentSection === 'vitals') {
+      fetchVitalsHistory();
+    }
+  }, [currentSection]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -395,9 +401,13 @@ const NurseDashboard = () => {
       )}
 
       {currentSection === 'vitals' && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Vitals Management</h2>
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Vitals Management</h2>
+              <p className="text-gray-600">Record and monitor patient vital signs</p>
+            </div>
             <button
               onClick={() => setShowAddVitals(true)}
               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -406,16 +416,148 @@ const NurseDashboard = () => {
               <span>Record Vitals</span>
             </button>
           </div>
-          <div className="text-center py-8">
-            <Thermometer className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Vitals Management</h3>
-            <p className="text-gray-600">Record and monitor patient vital signs</p>
-            <button
-              onClick={() => setShowAddVitals(true)}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Record New Vitals
-            </button>
+
+          {/* Vitals Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Thermometer className="h-6 w-6 text-blue-600" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-600">Total Vitals</p>
+                  <p className="text-2xl font-bold text-gray-900">{vitalsHistory.length}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Thermometer className="h-6 w-6 text-green-600" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-600">Normal</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {vitalsHistory.filter(v => v.status === 'Normal').length}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <Thermometer className="h-6 w-6 text-yellow-600" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-600">Warning</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {vitalsHistory.filter(v => v.status === 'Warning').length}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <Thermometer className="h-6 w-6 text-red-600" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-600">Critical</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {vitalsHistory.filter(v => v.status === 'Critical').length}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Vitals */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-medium text-gray-900">Recent Vitals</h3>
+              <button
+                onClick={fetchVitalsHistory}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                View All Vitals
+              </button>
+            </div>
+            <div className="p-6">
+              {vitalsHistory.length > 0 ? (
+                <div className="space-y-4">
+                  {vitalsHistory.slice(0, 5).map((vital, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h4 className="font-medium text-gray-900">
+                            {vital.patient?.firstName} {vital.patient?.lastName}
+                          </h4>
+                          <p className="text-sm text-gray-500">
+                            Recorded by: {vital.recordedBy?.firstName} {vital.recordedBy?.lastName}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            vital.status === 'Critical' ? 'bg-red-100 text-red-800' :
+                            vital.status === 'Warning' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {vital.status}
+                          </span>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(vital.recordedAt).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-500">BP:</span>
+                          <span className="ml-1 font-medium">
+                            {typeof vital.bloodPressure === 'object' 
+                              ? `${vital.bloodPressure.systolic}/${vital.bloodPressure.diastolic}`
+                              : vital.bloodPressure
+                            }
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">HR:</span>
+                          <span className="ml-1 font-medium">{vital.heartRate} BPM</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Temp:</span>
+                          <span className="ml-1 font-medium">{vital.temperature}°C</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">RR:</span>
+                          <span className="ml-1 font-medium">{vital.respiratoryRate || 'N/A'} BPM</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">O2:</span>
+                          <span className="ml-1 font-medium">{vital.oxygenSaturation || 'N/A'}%</span>
+                        </div>
+                      </div>
+                      {vital.notes && (
+                        <div className="mt-2 text-sm text-gray-600">
+                          <span className="font-medium">Notes:</span> {vital.notes}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Thermometer className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Vitals Recorded</h3>
+                  <p className="text-gray-600 mb-4">Start by recording patient vital signs</p>
+                  <button
+                    onClick={() => setShowAddVitals(true)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Record New Vitals
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
