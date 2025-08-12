@@ -246,12 +246,13 @@ const Stats = () => {
         doc.text(`Emergency Cases: ${overview?.emergencyPatients || 0}`, 20, 85);
         
         // Add department performance
+        let yPos = 105; // Initialize yPos for the entire PDF section
         if (departments.length > 0) {
           doc.setFontSize(16);
-          doc.text('Department Performance', 20, 105);
+          doc.text('Department Performance', 20, yPos);
           doc.setFontSize(10);
           
-          let yPos = 115;
+          yPos += 20; // Move down for department list
           departments.forEach((dept, index) => {
             if (yPos > 250) {
               doc.addPage();
