@@ -223,9 +223,67 @@ const Stats = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+      } else if (format === 'pdf') {
+        // Create PDF content using jsPDF
+        const { jsPDF } = await import('jspdf');
+        const doc = new jsPDF();
+        
+        // Add title
+        doc.setFontSize(20);
+        doc.text('Hospital Analytics Report', 20, 20);
+        
+        // Add date
+        doc.setFontSize(12);
+        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
+        
+        // Add overview stats
+        doc.setFontSize(16);
+        doc.text('Overview Statistics', 20, 45);
+        doc.setFontSize(12);
+        doc.text(`Total Patients: ${overview?.totalPatients || 0}`, 20, 55);
+        doc.text(`Active Doctors: ${overview?.activeDoctors || 0}`, 20, 65);
+        doc.text(`Today's Appointments: ${overview?.todayAppointments || 0}`, 20, 75);
+        doc.text(`Emergency Cases: ${overview?.emergencyPatients || 0}`, 20, 85);
+        
+        // Add department performance
+        if (departments.length > 0) {
+          doc.setFontSize(16);
+          doc.text('Department Performance', 20, 105);
+          doc.setFontSize(10);
+          
+          let yPos = 115;
+          departments.forEach((dept, index) => {
+            if (yPos > 250) {
+              doc.addPage();
+              yPos = 20;
+            }
+            doc.text(`${dept.department}: ${dept.patientCount} patients, ${dept.completionRate}% completion`, 20, yPos);
+            yPos += 10;
+          });
+        }
+        
+        // Add monthly trends
+        if (monthlyStats.length > 0) {
+          doc.setFontSize(16);
+          doc.text('Monthly Trends', 20, yPos + 10);
+          doc.setFontSize(10);
+          
+          let trendYPos = yPos + 20;
+          monthlyStats.forEach((stat, index) => {
+            if (trendYPos > 250) {
+              doc.addPage();
+              trendYPos = 20;
+            }
+            doc.text(`${stat._id.month}/${stat._id.year}: ${stat.count} appointments`, 20, trendYPos);
+            trendYPos += 10;
+          });
+        }
+        
+        // Save the PDF
+        doc.save(`analytics-report-${new Date().toISOString().split('T')[0]}.pdf`);
       }
       
-      toast.success(`Analytics exported as ${format.toUpperCase()} successfully!`);
+      toast.success(`Analytics exported as ${format === 'pdf' ? 'PDF' : format.toUpperCase()} successfully!`);
     } catch (error) {
       toast.error('Failed to export analytics');
       console.error('Export error:', error);
@@ -360,14 +418,14 @@ const Stats = () => {
             <FileText className="h-3 w-3 lg:h-4 lg:w-4" />
             <span className="hidden sm:inline">{exporting ? 'Exporting...' : 'Export CSV'}</span>
           </button>
-          <button
-            onClick={() => exportAnalytics('json')}
-            disabled={exporting}
-            className="flex items-center space-x-1 px-2 py-1 lg:px-3 lg:py-2 text-xs lg:text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-          >
-            <Download className="h-3 w-3 lg:h-4 lg:w-4" />
-            <span className="hidden sm:inline">{exporting ? 'Exporting...' : 'Export JSON'}</span>
-          </button>
+                      <button
+              onClick={() => exportAnalytics('pdf')}
+              disabled={exporting}
+              className="flex items-center space-x-1 px-2 py-1 lg:px-3 lg:py-2 text-xs lg:text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+            >
+              <Download className="h-3 w-3 lg:h-4 lg:w-4" />
+              <span className="hidden sm:inline">{exporting ? 'Exporting...' : 'Export PDF'}</span>
+            </button>
         </div>
       </div>
 
