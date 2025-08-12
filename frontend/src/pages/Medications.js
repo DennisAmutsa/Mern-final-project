@@ -68,8 +68,9 @@ const Medications = () => {
 
   const fetchMedications = async () => {
     try {
-      const response = await apiClient.get('/api/users?roles=user');
-      const patientsWithMedications = response.data.filter(patient => 
+      const response = await apiClient.get('/api/auth/users?roles=user');
+      console.log('Medications response:', response.data);
+      const patientsWithMedications = response.data.users.filter(patient => 
         patient.currentMedications && patient.currentMedications.length > 0
       );
       setMedications(patientsWithMedications);
@@ -83,8 +84,8 @@ const Medications = () => {
 
   const fetchPatients = async () => {
     try {
-      const response = await apiClient.get('/api/users?roles=user');
-      setPatients(response.data);
+      const response = await apiClient.get('/api/auth/users?roles=user');
+      setPatients(response.data.users || []);
     } catch (error) {
       console.error('Error fetching patients:', error);
     }
@@ -236,6 +237,9 @@ const Medications = () => {
   };
 
   const filteredMedications = medications.filter(patient => {
+    console.log('Patient data:', patient);
+    console.log('Patient medications:', patient.currentMedications);
+    
     const hasMatchingMedications = patient.currentMedications.some(med => {
       const matchesSearch = med.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            patient.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -376,7 +380,7 @@ const Medications = () => {
       {/* Medications List */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Patient Medications</h3>
+          <h3 className="text-lg font-medium text-gray-900">Patient Medications ({medications.length} patients, {filteredMedications.length} with medications)</h3>
         </div>
         <div className="p-6">
           {filteredMedications.length > 0 ? (
@@ -527,6 +531,19 @@ const Medications = () => {
               <Syringe className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No Medications Found</h3>
               <p className="text-gray-600">No medications match your search criteria</p>
+              
+              {/* Debug: Show all patients */}
+              <div className="mt-6 text-left">
+                <h4 className="font-medium text-gray-900 mb-2">All Patients ({patients.length}):</h4>
+                {patients.map(patient => (
+                  <div key={patient._id} className="p-2 bg-gray-50 rounded mb-2">
+                    <p className="text-sm">
+                      <strong>{patient.firstName} {patient.lastName}</strong> - 
+                      Medications: {patient.currentMedications?.length || 0}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

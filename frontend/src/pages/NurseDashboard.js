@@ -21,6 +21,7 @@ import {
   Save
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
 
@@ -79,10 +80,12 @@ const NurseDashboard = () => {
   const [handoverHistory, setHandoverHistory] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchDashboardStats();
     fetchCurrentHandover();
+    fetchPatientNotesForDashboard();
     checkCurrentAuthState(); // Check auth state on component load
   }, []);
 
@@ -154,11 +157,28 @@ const NurseDashboard = () => {
     }
     
     try {
-      await apiClient.post('/api/care-tasks', {
-        patientId: selectedPatient._id,
-        ...careTaskData
-      });
-      toast.success('Care task created successfully');
+      if (user?.role === 'nurse') {
+        // Nurses can only request tasks - they don't create them directly
+        await apiClient.post('/api/care-tasks/request', {
+          patientId: selectedPatient._id,
+          ...careTaskData,
+          requestedBy: user._id,
+          status: 'Pending'
+        });
+        
+        toast.success('Care task request submitted successfully! A doctor or administrator will review and assign it.');
+      } else {
+        // Doctors and admins can create tasks directly
+        await apiClient.post('/api/care-tasks', {
+          patientId: selectedPatient._id,
+          ...careTaskData,
+          assignedBy: user._id,
+          status: 'Assigned'
+        });
+        
+        toast.success('Care task created and assigned successfully');
+      }
+      
       setCareTaskData({
         task: '',
         description: '',
@@ -172,8 +192,11 @@ const NurseDashboard = () => {
       setShowAddCareTask(false);
       fetchDashboardStats(); // Refresh data
     } catch (error) {
-      toast.error('Failed to create care task');
-      console.error('Error creating care task:', error);
+      const errorMessage = user?.role === 'nurse' 
+        ? 'Failed to submit care task request' 
+        : 'Failed to create care task';
+      toast.error(errorMessage);
+      console.error('Error with care task:', error);
     }
   };
 
@@ -250,6 +273,15 @@ const NurseDashboard = () => {
     } catch (error) {
       toast.error('Failed to fetch patient notes');
       console.error('Error fetching patient notes:', error);
+    }
+  };
+
+  const fetchPatientNotesForDashboard = async () => {
+    try {
+      const response = await apiClient.get('/api/patient-notes?limit=3');
+      setPatientNotes(response.data);
+    } catch (error) {
+      console.error('Error fetching patient notes for dashboard:', error);
     }
   };
 
@@ -889,26 +921,69 @@ const NurseDashboard = () => {
       {currentSection === 'care-tasks' && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Care Tasks Management</h2>
-            <button
-              onClick={() => setShowAddCareTask(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Create Task</span>
-            </button>
+            <h2 className="text-xl font-bold text-gray-900">
+              {user?.role === 'nurse' ? 'My Assigned Care Tasks' : 'Care Tasks Management'}
+            </h2>
+            {user?.role !== 'nurse' && (
+              <button
+                onClick={() => setShowAddCareTask(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Create Task</span>
+              </button>
+            )}
           </div>
-          <div className="text-center py-8">
-            <Clipboard className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Care Tasks</h3>
-            <p className="text-gray-600">Manage nursing care tasks and assignments</p>
-            <button
-              onClick={() => setShowAddCareTask(true)}
-              className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-            >
-              Create New Task
-            </button>
-          </div>
+          
+          {user?.role === 'nurse' ? (
+            // Nurse view - show assigned tasks and request new ones
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium text-gray-900">My Assigned Tasks</h3>
+                <button
+                  onClick={() => setShowAddCareTask(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Request New Task
+                </button>
+              </div>
+              
+              <div className="text-center py-8">
+                <Clipboard className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Assigned Care Tasks</h3>
+                <p className="text-gray-600">
+                  View and update the status of tasks assigned to you by doctors and administrators
+                </p>
+                <button
+                  onClick={fetchCareTasksList}
+                  className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                >
+                  View My Tasks
+                </button>
+              </div>
+            </div>
+          ) : (
+            // Doctor/Admin view - manage all tasks
+            <div className="text-center py-8">
+              <Clipboard className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Care Tasks</h3>
+              <p className="text-gray-600">Create and manage nursing care tasks and assignments</p>
+              <div className="flex justify-center space-x-4 mt-4">
+                <button
+                  onClick={() => setShowAddCareTask(true)}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Create New Task
+                </button>
+                <button
+                  onClick={fetchCareTasksList}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                >
+                  View All Tasks
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1244,7 +1319,34 @@ const NurseDashboard = () => {
              <h3 className="text-lg font-medium text-gray-900">Lab Results Pending</h3>
            </div>
            <div className="p-6">
-             <p className="text-gray-500 text-center py-4">Click "View All Notes" to see patient notes</p>
+             {stats?.labResults?.length > 0 ? (
+               <div className="space-y-4">
+                 {stats.labResults.map((lab, index) => (
+                   <div key={index} className="flex items-center space-x-3">
+                     <div className="flex-shrink-0">
+                       <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                         <FileText className="h-4 w-4 text-purple-600" />
+                       </div>
+                     </div>
+                     <div className="flex-1 min-w-0">
+                       <p className="text-sm font-medium text-gray-900">
+                         {lab.patientName}
+                       </p>
+                       <p className="text-sm text-gray-500">
+                         {lab.testType} • Ordered: {lab.orderedDate}
+                       </p>
+                     </div>
+                     <div className="flex-shrink-0">
+                       <span className="text-xs text-gray-500">
+                         {lab.expectedTime}
+                       </span>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             ) : (
+               <p className="text-gray-500 text-center py-4">No pending lab results</p>
+             )}
            </div>
          </div>
 
@@ -1260,33 +1362,41 @@ const NurseDashboard = () => {
              </button>
            </div>
           <div className="p-6">
-            {stats?.labResults?.length > 0 ? (
+            {patientNotes.length > 0 ? (
               <div className="space-y-4">
-                {stats.labResults.map((lab, index) => (
+                {patientNotes.slice(0, 3).map((note, index) => (
                   <div key={index} className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                        <FileText className="h-4 w-4 text-purple-600" />
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <FileText className="h-4 w-4 text-blue-600" />
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900">
-                        {lab.patientName}
+                        {note.patient?.firstName} {note.patient?.lastName}
                       </p>
-                      <p className="text-sm text-gray-500">
-                        {lab.testType} • Ordered: {lab.orderedDate}
+                      <p className="text-sm text-gray-500 truncate">
+                        {note.note}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {new Date(note.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="flex-shrink-0">
-                      <span className="text-xs text-gray-500">
-                        {lab.expectedTime}
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        note.type === 'nursing_note' ? 'bg-blue-100 text-blue-800' :
+                        note.type === 'doctor_note' ? 'bg-green-100 text-green-800' :
+                        note.type === 'shift_handover' ? 'bg-purple-100 text-purple-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {note.type.replace('_', ' ').toUpperCase()}
                       </span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-4">No pending lab results</p>
+              <p className="text-gray-500 text-center py-4">No patient notes available</p>
             )}
           </div>
         </div>
@@ -1541,7 +1651,14 @@ const NurseDashboard = () => {
       {showAddCareTask && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Create Care Task</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              {user?.role === 'nurse' ? 'Request Care Task' : 'Create Care Task'}
+            </h3>
+            {user?.role === 'nurse' && (
+              <p className="text-sm text-gray-600 mb-4">
+                Request a care task to be assigned by a doctor or administrator.
+              </p>
+            )}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Patient</label>
@@ -1646,7 +1763,7 @@ const NurseDashboard = () => {
                   onClick={handleAddCareTask}
                   className="flex-1 px-4 py-2 text-white bg-purple-600 rounded-md hover:bg-purple-700"
                 >
-                  Create Task
+                  {user?.role === 'nurse' ? 'Request Task' : 'Create Task'}
                 </button>
               </div>
             </div>
@@ -1740,7 +1857,9 @@ const NurseDashboard = () => {
          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
            <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto">
              <div className="flex justify-between items-center mb-4">
-               <h3 className="text-lg font-medium text-gray-900">Care Tasks</h3>
+               <h3 className="text-lg font-medium text-gray-900">
+                 {user?.role === 'nurse' ? 'My Assigned Care Tasks' : 'All Care Tasks'}
+               </h3>
                <button 
                  onClick={() => setShowCareTasksList(false)}
                  className="text-gray-400 hover:text-gray-600"

@@ -35,6 +35,7 @@ import DoctorScheduleManagement from './pages/DoctorScheduleManagement';
 import TestAPI from './pages/TestAPI';
 import PatientNotes from './pages/PatientNotes';
 import Medications from './pages/Medications';
+import CareTasks from './pages/CareTasks';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -161,6 +162,7 @@ function AppRoutes() {
         <Route path="budget-reports" element={<BudgetReports />} />
         <Route path="financial-reports" element={<FinancialReports />} />
         <Route path="test-api" element={<TestAPI />} />
+        <Route path="care-tasks" element={<CareTasks />} />
       </Route>
 
       <Route path="/doctor-dashboard" element={
@@ -177,6 +179,7 @@ function AppRoutes() {
         <Route path="stats" element={<Stats />} />
         <Route path="medical-records" element={<MedicalRecords />} />
         <Route path="prescriptions" element={<Prescriptions />} />
+        <Route path="care-tasks" element={<CareTasks />} />
       </Route>
 
       <Route path="/nurse-dashboard" element={
@@ -191,7 +194,7 @@ function AppRoutes() {
         <Route path="appointments" element={<Appointments />} />
         <Route path="emergency" element={<Emergency />} />
         <Route path="vitals" element={<NurseDashboard />} />
-        <Route path="care-tasks" element={<NurseDashboard />} />
+        <Route path="care-tasks" element={<CareTasks />} />
         <Route path="patient-notes" element={<PatientNotes />} />
         <Route path="medications" element={<Medications />} />
         <Route path="lab-results" element={<NurseDashboard />} />

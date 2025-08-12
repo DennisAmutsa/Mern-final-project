@@ -100,6 +100,7 @@ const Layout = () => {
           { name: 'Doctor Schedules', href: '/admin-dashboard/doctor-schedules', icon: Calendar },
           { name: 'Appointments', href: '/admin-dashboard/appointments', icon: Calendar },
           { name: 'Emergency', href: '/admin-dashboard/emergency', icon: AlertTriangle },
+          { name: 'Care Tasks', href: '/admin-dashboard/care-tasks', icon: Clipboard },
           { name: 'Inventory', href: '/admin-dashboard/inventory', icon: Package },
           { name: 'Statistics & Analytics', href: '/admin-dashboard/stats', icon: BarChart3 },
         ];
@@ -111,6 +112,7 @@ const Layout = () => {
           { name: 'Emergency', href: '/doctor-dashboard/emergency', icon: AlertTriangle },
           { name: 'Medical Records', href: '/doctor-dashboard/medical-records', icon: FileText },
           { name: 'Prescriptions', href: '/doctor-dashboard/prescriptions', icon: Heart },
+          { name: 'Care Tasks', href: '/doctor-dashboard/care-tasks', icon: Clipboard },
           { name: 'Medical Reports', href: '/doctor-dashboard/stats', icon: BarChart3 },
         ];
       case 'nurse':

@@ -21,7 +21,8 @@ import {
   MapPin,
   X,
   Save,
-  CheckCircle
+  CheckCircle,
+  Clipboard
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -38,6 +39,22 @@ const DoctorDashboard = () => {
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [showAddCareTask, setShowAddCareTask] = useState(false);
+  const [showCareTasksList, setShowCareTasksList] = useState(false);
+  const [careTasksList, setCareTasksList] = useState([]);
+  const [careTaskData, setCareTaskData] = useState({
+    task: '',
+    description: '',
+    priority: 'Medium',
+    dueDate: '',
+    room: '',
+    category: 'General',
+    notes: '',
+    assignedTo: '',
+    patientId: ''
+  });
+  const [availableNurses, setAvailableNurses] = useState([]);
+  const [loadingNurses, setLoadingNurses] = useState(false);
   
   // Form states
   const [medicalRecordForm, setMedicalRecordForm] = useState({
@@ -183,6 +200,82 @@ const DoctorDashboard = () => {
       console.error('Error adding prescription:', error);
     }
   };
+
+  const handleAddCareTask = async () => {
+    if (!careTaskData.task || !careTaskData.description || !careTaskData.assignedTo || !careTaskData.patientId) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      await apiClient.post('/api/care-tasks', {
+        ...careTaskData,
+        assignedBy: user._id,
+        status: 'Assigned'
+      });
+      
+      toast.success('Care task created and assigned successfully');
+      setShowAddCareTask(false);
+      setCareTaskData({
+        task: '',
+        description: '',
+        priority: 'Medium',
+        dueDate: '',
+        room: '',
+        category: 'General',
+        notes: '',
+        assignedTo: '',
+        patientId: ''
+      });
+      fetchDashboardStats();
+    } catch (error) {
+      toast.error('Failed to create care task');
+      console.error('Error creating care task:', error);
+    }
+  };
+
+  const fetchCareTasksList = async () => {
+    try {
+      const response = await apiClient.get('/api/care-tasks');
+      setCareTasksList(response.data);
+      setShowCareTasksList(true);
+    } catch (error) {
+      toast.error('Failed to fetch care tasks');
+      console.error('Error fetching care tasks:', error);
+    }
+  };
+
+  const updateCareTaskStatus = async (taskId, newStatus) => {
+    try {
+      await apiClient.patch(`/api/care-tasks/${taskId}/status`, { status: newStatus });
+      toast.success('Task status updated successfully');
+      fetchCareTasksList();
+      fetchDashboardStats();
+    } catch (error) {
+      toast.error('Failed to update task status');
+      console.error('Error updating task status:', error);
+    }
+  };
+
+  const fetchAvailableNurses = async () => {
+    try {
+      setLoadingNurses(true);
+      const response = await apiClient.get('/api/auth/users?roles=nurse');
+      setAvailableNurses(response.data.users || []);
+    } catch (error) {
+      console.error('Error fetching nurses:', error);
+      toast.error('Failed to fetch available nurses');
+    } finally {
+      setLoadingNurses(false);
+    }
+  };
+
+  // Fetch nurses when care task modal opens
+  useEffect(() => {
+    if (showAddCareTask) {
+      fetchAvailableNurses();
+    }
+  }, [showAddCareTask]);
 
   const filteredPatients = assignedPatients.filter(patient => {
     const matchesSearch = patient.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -345,6 +438,51 @@ const DoctorDashboard = () => {
           <FileText className="h-6 w-6 text-purple-600 mb-2" />
           <span className="text-sm font-medium text-gray-900">Medical Reports</span>
         </button>
+        </div>
+      </div>
+
+      {/* Care Tasks Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-gray-900">Care Tasks Management</h3>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setShowAddCareTask(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Create Task</span>
+              </button>
+              <button
+                onClick={fetchCareTasksList}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                View All Tasks
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="text-center py-8">
+            <Clipboard className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Care Tasks</h3>
+            <p className="text-gray-600">Create and manage nursing care tasks and assignments</p>
+            <div className="flex justify-center space-x-4 mt-4">
+              <button
+                onClick={() => setShowAddCareTask(true)}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                Create New Task
+              </button>
+              <button
+                onClick={fetchCareTasksList}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                View All Tasks
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -823,6 +961,219 @@ const DoctorDashboard = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Care Task Modal */}
+      {showAddCareTask && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Create Care Task</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Patient *</label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={careTaskData.patientId}
+                  onChange={(e) => setCareTaskData({ ...careTaskData, patientId: e.target.value })}
+                >
+                  <option value="">Select a patient</option>
+                  {assignedPatients.map(patient => (
+                    <option key={patient._id} value={patient._id}>
+                      {patient.firstName} {patient.lastName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Task *</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={careTaskData.task}
+                  onChange={(e) => setCareTaskData({ ...careTaskData, task: e.target.value })}
+                  placeholder="e.g., Medication Check"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <textarea
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  rows="2"
+                  value={careTaskData.description}
+                  onChange={(e) => setCareTaskData({ ...careTaskData, description: e.target.value })}
+                  placeholder="Detailed description of the task..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Assign To *</label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={careTaskData.assignedTo}
+                  onChange={(e) => setCareTaskData({ ...careTaskData, assignedTo: e.target.value })}
+                  disabled={loadingNurses}
+                >
+                  <option value="">
+                    {loadingNurses ? 'Loading nurses...' : 'Select a nurse'}
+                  </option>
+                  {availableNurses.map(nurse => (
+                    <option key={nurse._id} value={nurse._id}>
+                      {nurse.firstName} {nurse.lastName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={careTaskData.priority}
+                  onChange={(e) => setCareTaskData({ ...careTaskData, priority: e.target.value })}
+                >
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={careTaskData.dueDate}
+                  onChange={(e) => setCareTaskData({ ...careTaskData, dueDate: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Room</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={careTaskData.room}
+                  onChange={(e) => setCareTaskData({ ...careTaskData, room: e.target.value })}
+                  placeholder="e.g., Room 101"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  value={careTaskData.category}
+                  onChange={(e) => setCareTaskData({ ...careTaskData, category: e.target.value })}
+                >
+                  <option value="General">General</option>
+                  <option value="Medication">Medication</option>
+                  <option value="Observation">Observation</option>
+                  <option value="Procedure">Procedure</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                <textarea
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  rows="2"
+                  value={careTaskData.notes}
+                  onChange={(e) => setCareTaskData({ ...careTaskData, notes: e.target.value })}
+                  placeholder="Additional notes for the care task..."
+                />
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowAddCareTask(false)}
+                  className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddCareTask}
+                  className="flex-1 px-4 py-2 text-white bg-purple-600 rounded-md hover:bg-purple-700"
+                >
+                  Create Task
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Care Tasks List Modal */}
+      {showCareTasksList && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">All Care Tasks</h3>
+              <button 
+                onClick={() => setShowCareTasksList(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              {careTasksList.length > 0 ? (
+                careTasksList.map((task, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="font-medium text-gray-900">{task.task}</h4>
+                        <p className="text-sm text-gray-500">
+                          Patient: {task.patient?.firstName} {task.patient?.lastName}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Assigned to: {task.assignedTo?.firstName} {task.assignedTo?.lastName}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          task.priority === 'High' ? 'bg-red-100 text-red-800' :
+                          task.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {task.priority}
+                        </span>
+                        <div className="mt-2">
+                          <select
+                            value={task.status}
+                            onChange={(e) => updateCareTaskStatus(task._id, e.target.value)}
+                            className="text-xs border border-gray-300 rounded px-2 py-1"
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Completed">Completed</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-2">
+                      <div>
+                        <span className="text-gray-500">Category:</span>
+                        <span className="ml-1 font-medium">{task.category}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Room:</span>
+                        <span className="ml-1 font-medium">{task.room}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Due Date:</span>
+                        <span className="ml-1 font-medium">{task.dueDate}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Status:</span>
+                        <span className="ml-1 font-medium">{task.status}</span>
+                      </div>
+                    </div>
+                    {task.notes && (
+                      <div className="text-sm text-gray-600">
+                        <span className="font-medium">Notes:</span> {task.notes}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-8">No care tasks found</p>
+              )}
+            </div>
           </div>
         </div>
       )}
