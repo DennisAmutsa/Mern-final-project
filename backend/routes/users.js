@@ -5,7 +5,7 @@ const { authenticateToken } = require('../middleware/auth');
 const mongoose = require('mongoose');
 
 // Get users by roles (e.g., /api/users?roles=user,patient)
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const { roles, assignedDoctor } = req.query;
     console.log('🔍 Users GET request - roles:', roles, 'assignedDoctor:', assignedDoctor);

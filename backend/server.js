@@ -108,6 +108,7 @@ app.use('/api/backup', require('./routes/backup'));
 app.use('/api/vitals', require('./routes/vitals'));
 app.use('/api/care-tasks', require('./routes/careTasks'));
 app.use('/api/patient-notes', require('./routes/patientNotes'));
+app.use('/api/shift-handover', require('./routes/shiftHandover'));
 console.log('Routes registered successfully');
 
 // Health check endpoint

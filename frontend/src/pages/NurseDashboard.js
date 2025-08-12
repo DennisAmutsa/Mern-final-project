@@ -55,11 +55,35 @@ const NurseDashboard = () => {
   const [careTasksList, setCareTasksList] = useState([]);
   const [showPatientNotes, setShowPatientNotes] = useState(false);
   const [patientNotes, setPatientNotes] = useState([]);
+  const [showShiftHandover, setShowShiftHandover] = useState(false);
+  const [shiftHandoverData, setShiftHandoverData] = useState({
+    shift: 'Morning',
+    handoverTo: '',
+    patientsUnderCare: 0,
+    criticalPatients: [],
+    medicationsDue: [],
+    emergencyAlerts: [],
+    keyNotes: '',
+    specialInstructions: [],
+    equipmentIssues: [],
+    nextShiftPriorities: []
+  });
+  const [availableNurses, setAvailableNurses] = useState([]);
+  const [availablePatients, setAvailablePatients] = useState([]);
+  const [selectedCriticalPatients, setSelectedCriticalPatients] = useState([]);
+  const [selectedMedications, setSelectedMedications] = useState([]);
+  const [loadingNurses, setLoadingNurses] = useState(false);
+  const [loadingPatients, setLoadingPatients] = useState(false);
+  const [currentHandover, setCurrentHandover] = useState(null);
+  const [showHandoverHistory, setShowHandoverHistory] = useState(false);
+  const [handoverHistory, setHandoverHistory] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     fetchDashboardStats();
+    fetchCurrentHandover();
+    checkCurrentAuthState(); // Check auth state on component load
   }, []);
 
   const fetchDashboardStats = async () => {
@@ -226,6 +250,194 @@ const NurseDashboard = () => {
     }
   };
 
+  const fetchCurrentHandover = async () => {
+    try {
+      const response = await apiClient.get(`/api/shift-handover/today/${shiftHandoverData.shift}`);
+      setCurrentHandover(response.data);
+    } catch (error) {
+      // No current handover found, which is fine
+      setCurrentHandover(null);
+    }
+  };
+
+  const fetchHandoverHistory = async () => {
+    try {
+      const response = await apiClient.get('/api/shift-handover');
+      setHandoverHistory(response.data);
+    } catch (error) {
+      toast.error('Failed to fetch handover history');
+    }
+  };
+
+  const handleCreateHandover = async () => {
+    try {
+      const response = await apiClient.post('/api/shift-handover', shiftHandoverData);
+      setCurrentHandover(response.data);
+      setShowShiftHandover(false);
+      toast.success('Shift handover created successfully');
+      fetchCurrentHandover();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to create shift handover');
+    }
+  };
+
+  const handleCompleteHandover = async (handoverId) => {
+    try {
+      await apiClient.patch(`/api/shift-handover/${handoverId}/complete`);
+      toast.success('Shift handover completed successfully');
+      fetchCurrentHandover();
+      fetchHandoverHistory();
+    } catch (error) {
+      toast.error('Failed to complete shift handover');
+    }
+  };
+
+  const fetchAvailableNurses = async () => {
+    try {
+      setLoadingNurses(true);
+      console.log('🔍 Fetching available nurses...');
+      const response = await apiClient.get('/api/users?roles=nurse');
+      console.log('📊 Nurses response:', response.data);
+      
+      // Filter out the current logged-in user
+      const currentUserStr = localStorage.getItem('user');
+      let currentUser = null;
+      
+      if (currentUserStr) {
+        try {
+          currentUser = JSON.parse(currentUserStr);
+          console.log('👤 Current user:', currentUser);
+        } catch (parseError) {
+          console.error('❌ Error parsing user from localStorage:', parseError);
+          currentUser = null;
+        }
+      } else {
+        console.log('⚠️ No user found in localStorage');
+      }
+      
+      // Filter nurses only if we have a valid current user
+      let filteredNurses = response.data;
+      if (currentUser && currentUser._id) {
+        filteredNurses = response.data.filter(nurse => nurse._id !== currentUser._id);
+        console.log('✅ Filtered nurses (excluding current user):', filteredNurses);
+      } else {
+        console.log('⚠️ No current user ID found, showing all nurses');
+      }
+      
+      setAvailableNurses(filteredNurses);
+    } catch (error) {
+      console.error('❌ Error fetching nurses:', error);
+      toast.error('Failed to fetch available nurses');
+    } finally {
+      setLoadingNurses(false);
+    }
+  };
+
+  const fetchAvailablePatients = async () => {
+    try {
+      console.log('🔍 Fetching available patients...');
+      const response = await apiClient.get('/api/users?roles=user');
+      console.log('📊 Patients response:', response.data);
+      setAvailablePatients(response.data);
+    } catch (error) {
+      console.error('❌ Error fetching patients:', error);
+      toast.error('Failed to fetch patients');
+    }
+  };
+
+  const checkCurrentAuthState = () => {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    
+    console.log('🔍 Current Authentication State:');
+    console.log('🔑 Token:', token ? 'Present' : 'Missing');
+    console.log('👤 User Data:', userStr ? 'Present' : 'Missing');
+    
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        console.log('✅ User Details:', {
+          name: `${user.firstName} ${user.lastName}`,
+          role: user.role,
+          email: user.email
+        });
+      } catch (error) {
+        console.error('❌ Error parsing user data:', error);
+      }
+    }
+  };
+
+  const refreshUserData = async () => {
+    try {
+      console.log('🔄 Refreshing user data from backend...');
+      const response = await apiClient.get('/api/auth/profile');
+      console.log('📊 User profile response:', response.data);
+      
+      if (response.data && response.data.user) {
+        const userData = response.data.user;
+        localStorage.setItem('user', JSON.stringify(userData));
+        console.log('✅ User data refreshed and stored:', userData);
+        return userData;
+      } else {
+        console.error('❌ No user data in profile response');
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing user data:', error);
+      return null;
+    }
+  };
+
+  const addCriticalPatient = () => {
+    const patient = availablePatients.find(p => p._id === selectedCriticalPatients.patientId);
+    if (patient && selectedCriticalPatients.condition) {
+      const newCriticalPatient = {
+        patientId: patient._id,
+        patientName: `${patient.firstName} ${patient.lastName}`,
+        condition: selectedCriticalPatients.condition,
+        specialInstructions: selectedCriticalPatients.specialInstructions || ''
+      };
+      setShiftHandoverData(prev => ({
+        ...prev,
+        criticalPatients: [...prev.criticalPatients, newCriticalPatient]
+      }));
+      setSelectedCriticalPatients({ patientId: '', condition: '', specialInstructions: '' });
+    }
+  };
+
+  const removeCriticalPatient = (index) => {
+    setShiftHandoverData(prev => ({
+      ...prev,
+      criticalPatients: prev.criticalPatients.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addMedication = () => {
+    const patient = availablePatients.find(p => p._id === selectedMedications.patientId);
+    if (patient && selectedMedications.medication && selectedMedications.dosage && selectedMedications.time) {
+      const newMedication = {
+        patientId: patient._id,
+        patientName: `${patient.firstName} ${patient.lastName}`,
+        medication: selectedMedications.medication,
+        dosage: selectedMedications.dosage,
+        time: selectedMedications.time,
+        status: 'Pending'
+      };
+      setShiftHandoverData(prev => ({
+        ...prev,
+        medicationsDue: [...prev.medicationsDue, newMedication]
+      }));
+      setSelectedMedications({ patientId: '', medication: '', dosage: '', time: '' });
+    }
+  };
+
+  const removeMedication = (index) => {
+    setShiftHandoverData(prev => ({
+      ...prev,
+      medicationsDue: prev.medicationsDue.filter((_, i) => i !== index)
+    }));
+  };
+
   const statCards = [
     {
       title: 'Patients Under Care',
@@ -292,7 +504,78 @@ const NurseDashboard = () => {
     if (currentSection === 'vitals') {
       fetchVitalsHistory();
     }
+    if (currentSection === 'shift-handover') {
+      fetchCurrentHandover();
+      fetchHandoverHistory();
+    }
   }, [currentSection]);
+
+  useEffect(() => {
+    const checkAuthAndFetchData = async () => {
+      if (showShiftHandover) {
+        // Check if user is logged in
+        const token = localStorage.getItem('token');
+        const userStr = localStorage.getItem('user');
+        
+        console.log('🔍 Checking authentication for shift handover...');
+        console.log('🔑 Token exists:', !!token);
+        console.log('👤 User data exists:', !!userStr);
+        
+        if (!token) {
+          console.log('❌ No token found');
+          toast.error('Please log in to create a shift handover');
+          setShowShiftHandover(false);
+          return;
+        }
+        
+        let user = null;
+        
+        if (!userStr) {
+          console.log('❌ No user data found, attempting to refresh...');
+          user = await refreshUserData();
+          
+          if (!user) {
+            console.log('❌ Failed to refresh user data');
+            toast.error('User session expired. Please log in again');
+            setShowShiftHandover(false);
+            return;
+          }
+          
+          console.log('✅ User data refreshed successfully');
+        } else {
+          try {
+            user = JSON.parse(userStr);
+          } catch (parseError) {
+            console.error('❌ Error parsing user data:', parseError);
+            console.log('🔄 Attempting to refresh user data...');
+            user = await refreshUserData();
+            
+            if (!user) {
+              toast.error('User session corrupted. Please log in again');
+              setShowShiftHandover(false);
+              return;
+            }
+          }
+        }
+        
+        console.log('✅ User authenticated:', user.firstName, user.lastName, user.role);
+        
+        // Check if user is a nurse
+        if (user.role !== 'nurse') {
+          console.log('❌ User is not a nurse:', user.role);
+          toast.error('Only nurses can create shift handovers');
+          setShowShiftHandover(false);
+          return;
+        }
+        
+        console.log('✅ Authentication check passed, fetching data...');
+        fetchAvailableNurses();
+        fetchAvailablePatients();
+      }
+    };
+    
+    checkAuthAndFetchData();
+  }, [showShiftHandover]);
 
   if (loading) {
     return (
@@ -394,9 +677,9 @@ const NurseDashboard = () => {
               <button className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors" onClick={() => handleQuickAction('care-tasks')}>
                 <Clipboard className="h-6 w-6 text-teal-600 mb-2" />
                 <span className="text-sm font-medium text-gray-900">Care Tasks</span>
-              </button>
-            </div>
-          </div>
+          </button>
+        </div>
+      </div>
         </>
       )}
 
@@ -600,14 +883,160 @@ const NurseDashboard = () => {
       )}
 
       {currentSection === 'shift-handover' && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Shift Handover</h2>
-          <div className="text-center py-8">
-            <Clock className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Shift Handover</h3>
-            <p className="text-gray-600">Document important information for the next shift</p>
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Shift Handover</h2>
+              <p className="text-gray-600">Document important information for the next shift</p>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setShowHandoverHistory(true)}
+                className="px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+              >
+                View History
+              </button>
+              <button
+                onClick={checkCurrentAuthState}
+                className="px-2 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-xs"
+                title="Debug: Check authentication state"
+              >
+                🔍 Debug Auth
+              </button>
+              {!currentHandover && (
+                <button
+                  onClick={() => setShowShiftHandover(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Create Handover
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Current Handover Status */}
+          {currentHandover ? (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Today's {currentHandover.shift} Shift Handover
+                </h3>
+                <div className="flex space-x-2">
+                  {!currentHandover.isCompleted && (
+                    <button
+                      onClick={() => handleCompleteHandover(currentHandover._id)}
+                      className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                    >
+                      Complete
+                    </button>
+                  )}
+                  <span className={`px-3 py-1 rounded text-sm ${
+                    currentHandover.isCompleted 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {currentHandover.isCompleted ? 'Completed' : 'In Progress'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{currentHandover.patientsUnderCare}</div>
+                  <div className="text-sm text-gray-600">Patients Under Care</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-orange-600">{currentHandover.medicationsDue.length}</div>
+                  <div className="text-sm text-gray-600">Medications Due</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-600">{currentHandover.emergencyAlerts.length}</div>
+                  <div className="text-sm text-gray-600">Emergency Alerts</div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Key Notes for Next Shift:</h4>
+                  <p className="text-gray-700 bg-gray-50 p-3 rounded">{currentHandover.keyNotes}</p>
+                </div>
+
+                {currentHandover.criticalPatients.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Critical Patients:</h4>
+                    <div className="space-y-2">
+                      {currentHandover.criticalPatients.map((patient, index) => (
+                        <div key={index} className="bg-red-50 p-3 rounded border-l-4 border-red-500">
+                          <div className="font-medium text-red-900">{patient.patientName}</div>
+                          <div className="text-sm text-red-700">{patient.condition}</div>
+                          {patient.specialInstructions && (
+                            <div className="text-sm text-red-600 mt-1">{patient.specialInstructions}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {currentHandover.medicationsDue.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Medications Due:</h4>
+                    <div className="space-y-2">
+                      {currentHandover.medicationsDue.map((med, index) => (
+                        <div key={index} className="bg-yellow-50 p-3 rounded border-l-4 border-yellow-500">
+                          <div className="font-medium text-yellow-900">{med.patientName}</div>
+                          <div className="text-sm text-yellow-700">{med.medication} - {med.dosage}</div>
+                          <div className="text-sm text-yellow-600">Due: {med.time}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {currentHandover.specialInstructions.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Special Instructions:</h4>
+                    <div className="space-y-2">
+                      {currentHandover.specialInstructions.map((instruction, index) => (
+                        <div key={index} className="bg-blue-50 p-3 rounded border-l-4 border-blue-500">
+                          <div className="font-medium text-blue-900">{instruction.category}</div>
+                          <div className="text-sm text-blue-700">{instruction.instruction}</div>
+                          <span className={`inline-block px-2 py-1 text-xs rounded mt-1 ${
+                            instruction.priority === 'High' ? 'bg-red-100 text-red-800' :
+                            instruction.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {instruction.priority} Priority
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-sm text-gray-500">
+                  Handover from: {currentHandover.handoverFrom?.firstName} {currentHandover.handoverFrom?.lastName} 
+                  to: {currentHandover.handoverTo}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="text-center py-8">
+                <Clock className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Handover Created</h3>
+                <p className="text-gray-600 mb-4">Create a shift handover to document important information for the next shift</p>
+                <button
+                  onClick={() => setShowShiftHandover(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Create Handover
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
       )}
 
 
@@ -709,7 +1138,7 @@ const NurseDashboard = () => {
              >
                View All Vitals
              </button>
-           </div>
+      </div>
           <div className="p-6">
             {stats?.vitalsMonitoring?.length > 0 ? (
               <div className="space-y-4">
@@ -812,32 +1241,83 @@ const NurseDashboard = () => {
 
       {/* Shift Handover Summary */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-medium text-gray-900">Shift Handover Summary</h3>
+          <button
+            onClick={() => navigate('/nurse-dashboard/shift-handover')}
+            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            View Details
+          </button>
         </div>
         <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{stats?.overview?.patientsUnderCare || 0}</div>
-              <div className="text-sm text-gray-600">Patients Under Care</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">{stats?.overview?.medicationsDue || 0}</div>
-              <div className="text-sm text-gray-600">Medications Due</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{stats?.overview?.emergencyAlerts || 0}</div>
-              <div className="text-sm text-gray-600">Emergency Alerts</div>
-            </div>
-          </div>
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h4 className="text-sm font-medium text-gray-900 mb-3">Key Notes for Next Shift:</h4>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm text-gray-600">
-                {stats?.shiftNotes || 'No special notes for handover. All patients stable.'}
-              </p>
-            </div>
-          </div>
+          {currentHandover ? (
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h4 className="font-medium text-gray-900">Today's {currentHandover.shift} Shift</h4>
+                  <p className="text-sm text-gray-500">
+                    From: {currentHandover.handoverFrom?.firstName} {currentHandover.handoverFrom?.lastName} 
+                    To: {currentHandover.handoverTo}
+                  </p>
+                </div>
+                <span className={`px-3 py-1 rounded text-sm ${
+                  currentHandover.isCompleted 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {currentHandover.isCompleted ? 'Completed' : 'In Progress'}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{currentHandover.patientsUnderCare}</div>
+                  <div className="text-sm text-gray-600">Patients Under Care</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-yellow-600">{currentHandover.medicationsDue.length}</div>
+                  <div className="text-sm text-gray-600">Medications Due</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-600">{currentHandover.emergencyAlerts.length}</div>
+                  <div className="text-sm text-gray-600">Emergency Alerts</div>
+                </div>
+              </div>
+              <div className="pt-4 border-t border-gray-200">
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Key Notes for Next Shift:</h4>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-sm text-gray-700">
+                    {currentHandover.keyNotes || 'No special notes for handover. All patients stable.'}
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{stats?.overview?.patientsUnderCare || 0}</div>
+                  <div className="text-sm text-gray-600">Patients Under Care</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-yellow-600">{stats?.overview?.medicationsDue || 0}</div>
+                  <div className="text-sm text-gray-600">Medications Due</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-600">{stats?.overview?.emergencyAlerts || 0}</div>
+                  <div className="text-sm text-gray-600">Emergency Alerts</div>
+                </div>
+              </div>
+              <div className="pt-4 border-t border-gray-200">
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Key Notes for Next Shift:</h4>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-sm text-gray-600">
+                    No handover created yet. Click "View Details" to create a shift handover.
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -1342,6 +1822,310 @@ const NurseDashboard = () => {
                )}
         </div>
       </div>
+         </div>
+       )}
+
+       {/* Shift Handover Modal */}
+       {showShiftHandover && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <div className="bg-white rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+             <div className="flex justify-between items-center mb-4">
+               <h3 className="text-lg font-medium text-gray-900">Create Shift Handover</h3>
+               <button 
+                 onClick={() => setShowShiftHandover(false)}
+                 className="text-gray-400 hover:text-gray-600"
+               >
+                 <X className="h-6 w-6" />
+               </button>
+             </div>
+             <div className="space-y-6">
+               {/* Basic Information */}
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Shift</label>
+                   <select
+                     value={shiftHandoverData.shift}
+                     onChange={(e) => setShiftHandoverData({...shiftHandoverData, shift: e.target.value})}
+                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   >
+                     <option value="Morning">Morning</option>
+                     <option value="Afternoon">Afternoon</option>
+                     <option value="Night">Night</option>
+                   </select>
+                 </div>
+                                    <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-1">Handover To</label>
+                     <select
+                       value={shiftHandoverData.handoverTo}
+                       onChange={(e) => setShiftHandoverData({...shiftHandoverData, handoverTo: e.target.value})}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       disabled={loadingNurses}
+                     >
+                       <option value="">
+                         {loadingNurses ? 'Loading nurses...' : 'Select a nurse'}
+                       </option>
+                       {!loadingNurses && availableNurses.length > 0 ? (
+                         availableNurses.map((nurse) => (
+                           <option key={nurse._id} value={`${nurse.firstName} ${nurse.lastName}`}>
+                             {nurse.firstName} {nurse.lastName}
+                           </option>
+                         ))
+                       ) : !loadingNurses ? (
+                         <option value="" disabled>No nurses available</option>
+                       ) : null}
+                     </select>
+                     {availableNurses.length === 0 && (
+                       <p className="text-sm text-red-600 mt-1">No other nurses found in the system</p>
+                     )}
+                   </div>
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Patients Under Care</label>
+                   <input
+                     type="number"
+                     value={shiftHandoverData.patientsUnderCare}
+                     onChange={(e) => setShiftHandoverData({...shiftHandoverData, patientsUnderCare: parseInt(e.target.value) || 0})}
+                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   />
+                 </div>
+               </div>
+
+               {/* Critical Patients Section */}
+               <div className="border border-gray-200 rounded-lg p-4">
+                 <h4 className="text-sm font-medium text-gray-900 mb-3">Critical Patients</h4>
+                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                   <div>
+                     <select
+                       value={selectedCriticalPatients.patientId}
+                       onChange={(e) => setSelectedCriticalPatients({...selectedCriticalPatients, patientId: e.target.value})}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                     >
+                       <option value="">Select Patient</option>
+                       {availablePatients.map((patient) => (
+                         <option key={patient._id} value={patient._id}>
+                           {patient.firstName} {patient.lastName}
+                         </option>
+                       ))}
+                     </select>
+                   </div>
+                   <div>
+                     <input
+                       type="text"
+                       value={selectedCriticalPatients.condition}
+                       onChange={(e) => setSelectedCriticalPatients({...selectedCriticalPatients, condition: e.target.value})}
+                       placeholder="Condition"
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                     />
+                   </div>
+                   <div>
+                     <input
+                       type="text"
+                       value={selectedCriticalPatients.specialInstructions}
+                       onChange={(e) => setSelectedCriticalPatients({...selectedCriticalPatients, specialInstructions: e.target.value})}
+                       placeholder="Special Instructions"
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                     />
+                   </div>
+                   <div>
+                     <button
+                       onClick={addCriticalPatient}
+                       className="w-full px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                     >
+                       Add Critical Patient
+                     </button>
+                   </div>
+                 </div>
+                 {shiftHandoverData.criticalPatients.length > 0 && (
+                   <div className="space-y-2">
+                     {shiftHandoverData.criticalPatients.map((patient, index) => (
+                       <div key={index} className="flex items-center justify-between bg-red-50 p-3 rounded border-l-4 border-red-500">
+                         <div>
+                           <div className="font-medium text-red-900">{patient.patientName}</div>
+                           <div className="text-sm text-red-700">{patient.condition}</div>
+                           {patient.specialInstructions && (
+                             <div className="text-sm text-red-600">{patient.specialInstructions}</div>
+                           )}
+                         </div>
+                         <button
+                           onClick={() => removeCriticalPatient(index)}
+                           className="text-red-600 hover:text-red-800"
+                         >
+                           <X className="h-4 w-4" />
+                         </button>
+                       </div>
+                     ))}
+                   </div>
+                 )}
+               </div>
+
+               {/* Medications Due Section */}
+               <div className="border border-gray-200 rounded-lg p-4">
+                 <h4 className="text-sm font-medium text-gray-900 mb-3">Medications Due</h4>
+                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-3">
+                   <div>
+                     <select
+                       value={selectedMedications.patientId}
+                       onChange={(e) => setSelectedMedications({...selectedMedications, patientId: e.target.value})}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                     >
+                       <option value="">Select Patient</option>
+                       {availablePatients.map((patient) => (
+                         <option key={patient._id} value={patient._id}>
+                           {patient.firstName} {patient.lastName}
+                         </option>
+                       ))}
+                     </select>
+                   </div>
+                   <div>
+                     <input
+                       type="text"
+                       value={selectedMedications.medication}
+                       onChange={(e) => setSelectedMedications({...selectedMedications, medication: e.target.value})}
+                       placeholder="Medication"
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                     />
+                   </div>
+                   <div>
+                     <input
+                       type="text"
+                       value={selectedMedications.dosage}
+                       onChange={(e) => setSelectedMedications({...selectedMedications, dosage: e.target.value})}
+                       placeholder="Dosage"
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                     />
+                   </div>
+                   <div>
+                     <input
+                       type="text"
+                       value={selectedMedications.time}
+                       onChange={(e) => setSelectedMedications({...selectedMedications, time: e.target.value})}
+                       placeholder="Time (e.g., 8:00 AM)"
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                     />
+                   </div>
+                   <div>
+                     <button
+                       onClick={addMedication}
+                       className="w-full px-3 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
+                     >
+                       Add Medication
+                     </button>
+                   </div>
+                 </div>
+                 {shiftHandoverData.medicationsDue.length > 0 && (
+                   <div className="space-y-2">
+                     {shiftHandoverData.medicationsDue.map((med, index) => (
+                       <div key={index} className="flex items-center justify-between bg-yellow-50 p-3 rounded border-l-4 border-yellow-500">
+                         <div>
+                           <div className="font-medium text-yellow-900">{med.patientName}</div>
+                           <div className="text-sm text-yellow-700">{med.medication} - {med.dosage}</div>
+                           <div className="text-sm text-yellow-600">Due: {med.time}</div>
+                         </div>
+                         <button
+                           onClick={() => removeMedication(index)}
+                           className="text-yellow-600 hover:text-yellow-800"
+                         >
+                           <X className="h-4 w-4" />
+                         </button>
+                       </div>
+                     ))}
+                   </div>
+                 )}
+               </div>
+
+               {/* Key Notes */}
+               <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-1">Key Notes for Next Shift</label>
+                 <textarea
+                   value={shiftHandoverData.keyNotes}
+                   onChange={(e) => setShiftHandoverData({...shiftHandoverData, keyNotes: e.target.value})}
+                   placeholder="Enter important information for the next shift..."
+                   rows={4}
+                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 />
+               </div>
+
+               {/* Action Buttons */}
+               <div className="flex justify-end space-x-2">
+                 <button
+                   onClick={() => setShowShiftHandover(false)}
+                   className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                 >
+                   Cancel
+                 </button>
+                 <button
+                   onClick={handleCreateHandover}
+                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                 >
+                   Create Handover
+                 </button>
+               </div>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Shift Handover History Modal */}
+       {showHandoverHistory && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto">
+             <div className="flex justify-between items-center mb-4">
+               <h3 className="text-lg font-medium text-gray-900">Shift Handover History</h3>
+               <button 
+                 onClick={() => setShowHandoverHistory(false)}
+                 className="text-gray-400 hover:text-gray-600"
+               >
+                 <X className="h-6 w-6" />
+               </button>
+             </div>
+             <div className="space-y-4">
+               {handoverHistory.length > 0 ? (
+                 handoverHistory.map((handover, index) => (
+                   <div key={index} className="border border-gray-200 rounded-lg p-4">
+                     <div className="flex justify-between items-start mb-3">
+                       <div>
+                         <h4 className="font-medium text-gray-900">
+                           {handover.shift} Shift - {new Date(handover.date).toLocaleDateString()}
+                         </h4>
+                         <p className="text-sm text-gray-500">
+                           From: {handover.handoverFrom?.firstName} {handover.handoverFrom?.lastName} 
+                           To: {handover.handoverTo}
+                         </p>
+                       </div>
+                       <div className="text-right">
+                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                           handover.isCompleted ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                         }`}>
+                           {handover.isCompleted ? 'Completed' : 'In Progress'}
+                         </span>
+                         <p className="text-xs text-gray-500 mt-1">
+                           {new Date(handover.createdAt).toLocaleString()}
+                         </p>
+                       </div>
+                     </div>
+                     <div className="grid grid-cols-3 gap-4 text-sm mb-3">
+                       <div>
+                         <span className="text-gray-500">Patients:</span>
+                         <span className="ml-1 font-medium">{handover.patientsUnderCare}</span>
+                       </div>
+                       <div>
+                         <span className="text-gray-500">Medications:</span>
+                         <span className="ml-1 font-medium">{handover.medicationsDue.length}</span>
+                       </div>
+                       <div>
+                         <span className="text-gray-500">Alerts:</span>
+                         <span className="ml-1 font-medium">{handover.emergencyAlerts.length}</span>
+                       </div>
+                     </div>
+                     <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded">
+                       <span className="font-medium">Key Notes:</span> {handover.keyNotes}
+                     </div>
+                   </div>
+                 ))
+               ) : (
+                 <p className="text-gray-500 text-center py-8">No handover history found</p>
+               )}
+             </div>
+           </div>
          </div>
        )}
     </div>
