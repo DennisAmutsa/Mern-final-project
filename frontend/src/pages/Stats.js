@@ -308,119 +308,122 @@ const Stats = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full overflow-x-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Statistics & Analytics</h1>
-          <p className="text-gray-600"> Impact Metrics and Hospital Performance</p>
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Statistics & Analytics</h1>
+          <p className="text-gray-600">Impact Metrics and Hospital Performance</p>
         </div>
-        <div className="flex items-center space-x-4">
+        
+        {/* Status and Connection Info */}
         <div className="flex items-center space-x-2 text-sm text-gray-500">
-            <Clock className="h-4 w-4" />
-            <span>{new Date().toLocaleDateString()}</span>
-            <div className="flex items-center space-x-1 ml-4">
-              {isConnected ? (
-                <>
-                  <Wifi className="h-4 w-4 text-green-500" />
-                  <span className="text-green-600">Live</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="h-4 w-4 text-red-500" />
-                  <span className="text-red-600">Offline</span>
-                </>
-              )}
-            </div>
+          <Clock className="h-4 w-4" />
+          <span className="hidden sm:inline">{new Date().toLocaleDateString()}</span>
+          <span className="sm:hidden">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+          <div className="flex items-center space-x-1 ml-2 lg:ml-4">
+            {isConnected ? (
+              <>
+                <Wifi className="h-4 w-4 text-green-500" />
+                <span className="text-green-600 hidden sm:inline">Live</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-4 w-4 text-red-500" />
+                <span className="text-red-600 hidden sm:inline">Offline</span>
+              </>
+            )}
           </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            >
-              <Filter className="h-4 w-4" />
-              <span>Filters</span>
-            </button>
-            <button
-              onClick={fetchStats}
-              className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            >
-              <RefreshCw className="h-4 w-4" />
-              <span>Refresh</span>
-            </button>
-            <button
-              onClick={() => exportAnalytics('csv')}
-              disabled={exporting}
-              className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-            >
-              <FileText className="h-4 w-4" />
-              <span>{exporting ? 'Exporting...' : 'Export CSV'}</span>
-            </button>
-            <button
-              onClick={() => exportAnalytics('json')}
-              disabled={exporting}
-              className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-            >
-              <Download className="h-4 w-4" />
-              <span>{exporting ? 'Exporting...' : 'Export JSON'}</span>
-            </button>
-          </div>
+        </div>
+        
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center space-x-1 px-2 py-1 lg:px-3 lg:py-2 text-xs lg:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+            <Filter className="h-3 w-3 lg:h-4 lg:w-4" />
+            <span className="hidden sm:inline">Filters</span>
+          </button>
+          <button
+            onClick={fetchStats}
+            className="flex items-center space-x-1 px-2 py-1 lg:px-3 lg:py-2 text-xs lg:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+            <RefreshCw className="h-3 w-3 lg:h-4 lg:w-4" />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+          <button
+            onClick={() => exportAnalytics('csv')}
+            disabled={exporting}
+            className="flex items-center space-x-1 px-2 py-1 lg:px-3 lg:py-2 text-xs lg:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+          >
+            <FileText className="h-3 w-3 lg:h-4 lg:w-4" />
+            <span className="hidden sm:inline">{exporting ? 'Exporting...' : 'Export CSV'}</span>
+          </button>
+          <button
+            onClick={() => exportAnalytics('json')}
+            disabled={exporting}
+            className="flex items-center space-x-1 px-2 py-1 lg:px-3 lg:py-2 text-xs lg:text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+          >
+            <Download className="h-3 w-3 lg:h-4 lg:w-4" />
+            <span className="hidden sm:inline">{exporting ? 'Exporting...' : 'Export JSON'}</span>
+          </button>
         </div>
       </div>
 
       {/* Tab Navigation */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6" aria-label="Tabs">
+          <nav className="flex overflow-x-auto px-4 lg:px-6" aria-label="Tabs">
             <button
               onClick={() => setActiveTab('general')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
                 activeTab === 'general'
                   ? 'border-red-500 text-red-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              <div className="flex items-center space-x-2">
-                <BarChart3 className="h-4 w-4" />
+              <div className="flex items-center space-x-1 lg:space-x-2">
+                <BarChart3 className="h-3 w-3 lg:h-4 lg:w-4" />
                 <span>General Analytics</span>
               </div>
             </button>
             <button
               onClick={() => setActiveTab('financial')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
                 activeTab === 'financial'
                   ? 'border-red-500 text-red-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              <div className="flex items-center space-x-2">
-                <FileText className="h-4 w-4" />
+              <div className="flex items-center space-x-1 lg:space-x-2">
+                <FileText className="h-3 w-3 lg:h-4 lg:w-4" />
                 <span>Financial Reports</span>
               </div>
             </button>
             <button
               onClick={() => setActiveTab('budget')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
                 activeTab === 'budget'
                   ? 'border-red-500 text-red-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              <div className="flex items-center space-x-2">
-                <PieChart className="h-4 w-4" />
+              <div className="flex items-center space-x-1 lg:space-x-2">
+                <PieChart className="h-3 w-3 lg:h-4 lg:w-4" />
                 <span>Budget Analytics</span>
               </div>
             </button>
             <button
               onClick={() => setActiveTab('billing')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-3 lg:py-4 px-2 lg:px-1 border-b-2 font-medium text-xs lg:text-sm whitespace-nowrap ${
                 activeTab === 'billing'
                   ? 'border-red-500 text-red-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              <div className="flex items-center space-x-2">
-                <DollarSign className="h-4 w-4" />
+              <div className="flex items-center space-x-1 lg:space-x-2">
+                <DollarSign className="h-3 w-3 lg:h-4 lg:w-4" />
                 <span>Financial Analytics</span>
               </div>
             </button>
@@ -433,9 +436,9 @@ const Stats = () => {
         <>
       {/* Filters Panel */}
       {showFilters && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 lg:p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Analytics Filters</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
               <select
@@ -536,8 +539,8 @@ const Stats = () => {
             </div>
             
       {/* Department Performance Chart */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 lg:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
           <h3 className="text-lg font-medium text-gray-900">Department Performance</h3>
           <div className="flex items-center space-x-2">
             <BarChart className="h-4 w-4 text-gray-400" />
@@ -547,7 +550,7 @@ const Stats = () => {
         {departments.length === 0 ? (
           <div className="text-center text-gray-500 py-8">No department data available.</div>
         ) : (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={250}>
             {chartType === 'bar' && (
               <RechartsBarChart data={departments} margin={{ top: 20, right: 30, left: 0, bottom: 5 }} onClick={data => setDrilldown({ type: 'department', value: data.activeLabel })}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -677,7 +680,7 @@ const Stats = () => {
         {monthlyStats.length === 0 ? (
           <div className="text-center text-gray-500 py-4">No trend data available.</div>
         ) : (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={250}>
             <RechartsLineChart 
               data={monthlyStats} 
               margin={{ top: 20, right: 30, left: 0, bottom: 5 }} 
@@ -737,12 +740,12 @@ const Stats = () => {
           ) : (
             <>
               {/* Financial Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 lg:p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                      <p className="text-2xl font-bold text-green-600">
+                      <p className="text-xl lg:text-2xl font-bold text-green-600">
                         Ksh{financialReports.reduce((sum, r) => sum + (r.totals?.revenue ? Number(r.totals.revenue) : 0), 0).toLocaleString()}
                       </p>
                     </div>
