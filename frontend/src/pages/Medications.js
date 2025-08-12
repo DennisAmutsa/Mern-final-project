@@ -20,6 +20,10 @@ const Medications = () => {
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  // Temporary: Clear search to show all medications
+  useEffect(() => {
+    setSearchTerm('');
+  }, []);
   const [filterStatus, setFilterStatus] = useState('all');
   const [showAddMedication, setShowAddMedication] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
@@ -73,6 +77,7 @@ const Medications = () => {
       const patientsWithMedications = response.data.users.filter(patient => 
         patient.currentMedications && patient.currentMedications.length > 0
       );
+      console.log('Patients with medications:', patientsWithMedications);
       setMedications(patientsWithMedications);
     } catch (error) {
       toast.error('Failed to fetch medications');
@@ -85,6 +90,7 @@ const Medications = () => {
   const fetchPatients = async () => {
     try {
       const response = await apiClient.get('/api/auth/users?roles=user');
+      console.log('All patients:', response.data.users);
       setPatients(response.data.users || []);
     } catch (error) {
       console.error('Error fetching patients:', error);
@@ -403,15 +409,27 @@ const Medications = () => {
                   </div>
                   
                   <div className="space-y-3">
+                    {/* Debug: Show all medications for this patient */}
+                    <div className="p-2 bg-yellow-50 border border-yellow-200 rounded mb-2">
+                      <p className="text-xs font-semibold text-yellow-800">Debug - All medications for {patient.firstName}:</p>
+                      <p className="text-xs text-yellow-700">
+                        Total: {patient.currentMedications.length} | 
+                        Names: {patient.currentMedications.map(m => m.name).join(', ')}
+                      </p>
+                    </div>
+                    
                     {patient.currentMedications
                       .filter(med => {
                         const matchesSearch = med.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                              patient.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                              patient.lastName.toLowerCase().includes(searchTerm.toLowerCase());
                         const matchesFilter = filterStatus === 'all' || med.status === filterStatus;
+                        console.log(`Medication ${med.name}: search=${matchesSearch}, filter=${matchesFilter}`);
                         return matchesSearch && matchesFilter;
                       })
-                      .map(medication => (
+                      .map(medication => {
+                        console.log('Rendering medication:', medication);
+                        return (
                         <div key={medication._id} className="p-3 bg-gray-50 rounded-lg">
                           {/* Medication Info */}
                           <div className="flex items-start space-x-3 mb-3">
@@ -521,7 +539,8 @@ const Medications = () => {
                             </button>
                           </div>
                         </div>
-                      ))}
+                      );
+                      })}
                   </div>
                 </div>
               ))}
@@ -537,6 +556,31 @@ const Medications = () => {
                 <h4 className="font-medium text-gray-900 mb-2">All Patients ({patients.length}):</h4>
                 {patients.map(patient => (
                   <div key={patient._id} className="p-2 bg-gray-50 rounded mb-2">
+                    <p className="text-sm">
+                      <strong>{patient.firstName} {patient.lastName}</strong> - 
+                      Medications: {patient.currentMedications?.length || 0}
+                      {patient.currentMedications && patient.currentMedications.length > 0 && (
+                        <span className="ml-2 text-xs text-gray-500">
+                          ({patient.currentMedications.map(m => m.name).join(', ')})
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Debug: Show current filters */}
+              <div className="mt-4 text-left">
+                <h4 className="font-medium text-gray-900 mb-2">Current Filters:</h4>
+                <p className="text-sm">Search Term: "{searchTerm}"</p>
+                <p className="text-sm">Filter Status: "{filterStatus}"</p>
+              </div>
+              
+              {/* Debug: Show medications state */}
+              <div className="mt-4 text-left">
+                <h4 className="font-medium text-gray-900 mb-2">Medications State ({medications.length}):</h4>
+                {medications.map(patient => (
+                  <div key={patient._id} className="p-2 bg-blue-50 rounded mb-2">
                     <p className="text-sm">
                       <strong>{patient.firstName} {patient.lastName}</strong> - 
                       Medications: {patient.currentMedications?.length || 0}

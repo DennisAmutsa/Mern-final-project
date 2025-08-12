@@ -55,21 +55,42 @@ io.on('connection', (socket) => {
 global.io = io;
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+// Enhanced CORS configuration
 app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "https://mern-final-project-bres.onrender.com", 
-    "https://mern-final-project-g1oj.vercel.app",
-    "https://mern-final-project-g1oj-2q7ho78aa-dennis-projects-a77c1de0.vercel.app"
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      "http://localhost:3000",
+      "https://mern-final-project-bres.onrender.com", 
+      "https://mern-final-project-g1oj.vercel.app",
+      "https://mern-final-project-g1oj-2q7ho78aa-dennis-projects-a77c1de0.vercel.app"
+    ];
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Handle CORS preflight requests
+app.options('*', cors());
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI, {

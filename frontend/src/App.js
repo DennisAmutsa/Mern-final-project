@@ -36,6 +36,7 @@ import TestAPI from './pages/TestAPI';
 import PatientNotes from './pages/PatientNotes';
 import Medications from './pages/Medications';
 import CareTasks from './pages/CareTasks';
+import NurseReports from './pages/NurseReports';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -199,7 +200,7 @@ function AppRoutes() {
         <Route path="medications" element={<Medications />} />
         <Route path="lab-results" element={<NurseDashboard />} />
         <Route path="shift-handover" element={<NurseDashboard />} />
-        <Route path="reports" element={<Stats />} />
+        <Route path="reports" element={<NurseReports />} />
       </Route>
 
       <Route path="/receptionist-dashboard" element={

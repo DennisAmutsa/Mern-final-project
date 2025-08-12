@@ -242,23 +242,25 @@ router.put('/change-password', authenticateToken, [
   }
 });
 
-// Get all users (admin only)
-router.get('/users', authenticateToken, requireRole('admin'), async (req, res) => {
+// Get all users (admin, doctor, nurse)
+router.get('/users', authenticateToken, requireRole(['admin', 'doctor', 'nurse']), async (req, res) => {
   try {
     const { page = 1, limit = 10, role, roles, department, search } = req.query;
     const skip = (page - 1) * limit;
     
     let query = {};
-    const allowedRoles = ['doctor', 'nurse', 'receptionist', 'pharmacist', 'staff'];
+    const allowedRoles = ['doctor', 'nurse', 'receptionist', 'pharmacist', 'staff', 'user'];
     if (roles) {
-      // Only allow allowedRoles, ignore any others
+      // Allow the requested roles if they're in the allowed list
       const rolesArray = roles.split(',').filter(r => allowedRoles.includes(r));
-      query.role = { $in: rolesArray };
+      if (rolesArray.length > 0) {
+        query.role = { $in: rolesArray };
+      }
     } else if (role && allowedRoles.includes(role)) {
       query.role = role;
     } else {
-      // Default: only allowedRoles
-      query.role = { $in: allowedRoles };
+      // Default: only staff roles (not patients)
+      query.role = { $in: ['doctor', 'nurse', 'receptionist', 'pharmacist', 'staff'] };
     }
     if (department) query.department = department;
     if (search) {
@@ -906,9 +908,14 @@ router.post('/medications/:medicationId/administer', authenticateToken, requireR
       return res.status(404).json({ error: 'Medication not found' });
     }
 
+    // Find the specific medication to get its details
+    const medication = patient.currentMedications.find(med => med._id.toString() === medicationId);
+    
     // Create administration record
     const administrationRecord = {
       medicationId,
+      medication: medication ? medication.name : 'Unknown Medication',
+      dosage: medication ? medication.dosage : 'Unknown Dosage',
       administeredAt: new Date(administeredAt),
       notes,
       status,
@@ -1056,6 +1063,47 @@ router.post('/medications/:medicationId/report-reaction', authenticateToken, req
     await logAudit({ req, action: 'ADVERSE_REACTION_REPORT', description: `Adverse reaction reported for patient ${patient.email} by ${req.user.email}`, status: 'SUCCESS', details: req.body });
   } catch (error) {
     await logAudit({ req, action: 'ADVERSE_REACTION_REPORT', description: `Adverse reaction report failed`, status: 'FAILED', details: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all medication administrations (for reports)
+router.get('/medications/administered', authenticateToken, requireRole(['nurse', 'admin', 'doctor']), async (req, res) => {
+  try {
+    // Get all users with medication administrations
+    const users = await User.find({
+      'medicationAdministrations': { $exists: true, $ne: [] }
+    }).select('firstName lastName medicationAdministrations currentMedications');
+
+    // Extract and format medication administrations
+    const administrations = [];
+    users.forEach(user => {
+      if (user.medicationAdministrations && user.medicationAdministrations.length > 0) {
+        user.medicationAdministrations.forEach(admin => {
+          administrations.push({
+            _id: admin._id,
+            medication: admin.medication || 'Unknown Medication',
+            dosage: admin.dosage || 'Unknown Dosage',
+            administeredAt: admin.administeredAt,
+            administeredBy: admin.administeredByUser || 'Unknown Nurse',
+            notes: admin.notes,
+            status: admin.status,
+            patient: {
+              _id: user._id,
+              firstName: user.firstName,
+              lastName: user.lastName
+            }
+          });
+        });
+      }
+    });
+
+    // Sort by most recent first
+    administrations.sort((a, b) => new Date(b.administeredAt) - new Date(a.administeredAt));
+
+    res.json(administrations);
+  } catch (error) {
+    console.error('Error fetching medication administrations:', error);
     res.status(500).json({ error: error.message });
   }
 });

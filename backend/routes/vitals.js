@@ -18,6 +18,20 @@ router.get('/patient/:patientId', auth, async (req, res) => {
   }
 });
 
+// Get all vitals (for reports)
+router.get('/', auth, async (req, res) => {
+  try {
+    const vitals = await Vitals.find()
+      .populate('patient', 'firstName lastName')
+      .populate('recordedBy', 'firstName lastName')
+      .sort({ recordedAt: -1 });
+    
+    res.json(vitals);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get latest vitals for all patients
 router.get('/latest', auth, async (req, res) => {
   try {
