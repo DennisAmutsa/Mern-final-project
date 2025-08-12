@@ -9,33 +9,53 @@ const Appointment = require('../models/Appointment');
 router.get('/', async (req, res) => {
   try {
     const { status, severity, doctor, patient } = req.query;
-    let patientQuery = {};
     let appointmentQuery = { type: 'Emergency' };
 
-    if (status) patientQuery.status = status;
-    if (patient) patientQuery._id = patient;
+    if (doctor) appointmentQuery.doctor = doctor;
+    if (severity) appointmentQuery.priority = severity;
 
-    // Find patients matching criteria
-    const patients = await Patient.find(patientQuery)
-      .populate('assignedDoctor', 'firstName lastName specialization')
+    // Find all emergency appointments
+    const emergencyAppointments = await Appointment.find(appointmentQuery)
+      .populate('doctor', 'firstName lastName email')
+      .populate('patient', 'firstName lastName email role')
       .sort({ createdAt: -1 })
       .lean();
 
-    // For each patient, find their latest emergency appointment and filter by doctor/severity if needed
+    // Process results to include both patient records and user records
     const results = [];
-    for (const p of patients) {
-      let aptQuery = { ...appointmentQuery, patient: p._id };
-      if (doctor) aptQuery.doctor = doctor;
-      if (severity) aptQuery.priority = severity;
-      const latestApt = await Appointment.findOne(aptQuery)
-        .sort({ createdAt: -1 })
-        .populate('doctor', 'firstName lastName email');
-      if (latestApt) {
-        results.push({ patient: p, appointment: latestApt });
+    for (const apt of emergencyAppointments) {
+      if (apt.patient) {
+        // If patient is a user (has role field), create a patient-like object
+        if (apt.patient.role) {
+          const patientData = {
+            _id: apt.patient._id,
+            firstName: apt.patient.firstName,
+            lastName: apt.patient.lastName,
+            patientId: apt.patient.username || apt.patient._id,
+            contactInfo: {
+              email: apt.patient.email,
+              phone: apt.patient.contactInfo?.phone || '000-000-0000'
+            },
+            status: 'Emergency',
+            department: 'Emergency'
+          };
+          results.push({ patient: patientData, appointment: apt });
+        } else {
+          // If patient is a Patient record, use as is
+          results.push({ patient: apt.patient, appointment: apt });
+        }
       }
     }
-    res.json(results);
+
+    // Filter by patient if specified
+    if (patient) {
+      const filtered = results.filter(r => r.patient._id.toString() === patient);
+      res.json(filtered);
+    } else {
+      res.json(results);
+    }
   } catch (error) {
+    console.error('Error fetching emergencies:', error);
     res.status(500).json({ error: error.message });
   }
 });
