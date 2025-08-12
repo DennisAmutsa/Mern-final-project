@@ -250,12 +250,45 @@ const NurseDashboard = () => {
     }
   };
 
+  const getCurrentShift = () => {
+    const hour = new Date().getHours();
+    if (hour >= 6 && hour < 14) return 'Morning';
+    if (hour >= 14 && hour < 22) return 'Afternoon';
+    return 'Night';
+  };
+
   const fetchCurrentHandover = async () => {
     try {
-      const response = await apiClient.get(`/api/shift-handover/today/${shiftHandoverData.shift}`);
-      setCurrentHandover(response.data);
+      // First try to get the current shift's handover
+      const currentShift = getCurrentShift();
+      console.log('🕐 Current time-based shift:', currentShift);
+      
+      let response = await apiClient.get(`/api/shift-handover/today/${currentShift}`);
+      if (response.data && Object.keys(response.data).length > 0) {
+        console.log('✅ Found handover for current shift:', currentShift);
+        setCurrentHandover(response.data);
+        return;
+      }
+      
+      // If no handover for current shift, try to get any handover for today
+      console.log('🔍 No handover for current shift, checking all shifts...');
+      const allHandoversResponse = await apiClient.get('/api/shift-handover');
+      const todayHandovers = allHandoversResponse.data.filter(handover => {
+        const handoverDate = new Date(handover.date);
+        const today = new Date();
+        return handoverDate.toDateString() === today.toDateString();
+      });
+      
+      if (todayHandovers.length > 0) {
+        console.log('✅ Found handover for today:', todayHandovers[0]);
+        setCurrentHandover(todayHandovers[0]);
+        return;
+      }
+      
+      console.log('❌ No handover found for today');
+      setCurrentHandover(null);
     } catch (error) {
-      // No current handover found, which is fine
+      console.error('❌ Error fetching current handover:', error);
       setCurrentHandover(null);
     }
   };
@@ -283,12 +316,17 @@ const NurseDashboard = () => {
 
   const handleCompleteHandover = async (handoverId) => {
     try {
-      await apiClient.patch(`/api/shift-handover/${handoverId}/complete`);
+      console.log('🔄 Completing handover with ID:', handoverId);
+      const response = await apiClient.patch(`/api/shift-handover/${handoverId}/complete`, {});
+      console.log('✅ Handover completion response:', response);
       toast.success('Shift handover completed successfully');
       fetchCurrentHandover();
       fetchHandoverHistory();
     } catch (error) {
-      toast.error('Failed to complete shift handover');
+      console.error('❌ Error completing handover:', error);
+      console.error('❌ Error response:', error.response);
+      console.error('❌ Error message:', error.message);
+      toast.error(`Failed to complete shift handover: ${error.response?.data?.message || error.message}`);
     }
   };
 
@@ -898,12 +936,17 @@ const NurseDashboard = () => {
                 View History
               </button>
               <button
-                onClick={checkCurrentAuthState}
-                className="px-2 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-xs"
-                title="Debug: Check authentication state"
+                onClick={() => {
+                  console.log('🔄 Manually refreshing handover data...');
+                  fetchCurrentHandover();
+                  toast.success('Handover data refreshed');
+                }}
+                className="px-4 py-2 text-green-600 border border-green-600 rounded-lg hover:bg-green-50 transition-colors"
+                title="Refresh handover data"
               >
-                🔍 Debug Auth
+                🔄 Refresh
               </button>
+
               {!currentHandover && (
                 <button
                   onClick={() => setShowShiftHandover(true)}
@@ -1244,7 +1287,13 @@ const NurseDashboard = () => {
         <div className="p-6 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-medium text-gray-900">Shift Handover Summary</h3>
           <button
-            onClick={() => navigate('/nurse-dashboard/shift-handover')}
+            onClick={() => {
+              if (currentHandover) {
+                setShowHandoverHistory(true);
+              } else {
+                setShowShiftHandover(true);
+              }
+            }}
             className="text-sm text-blue-600 hover:text-blue-800 font-medium"
           >
             View Details

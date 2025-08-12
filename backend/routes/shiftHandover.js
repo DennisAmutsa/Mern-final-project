@@ -144,29 +144,37 @@ router.put('/:id', auth, async (req, res) => {
 // Complete shift handover
 router.patch('/:id/complete', auth, async (req, res) => {
   try {
+    console.log('🔄 Completing handover with ID:', req.params.id);
+    console.log('👤 User completing handover:', req.user.id);
+    
     const handover = await ShiftHandover.findById(req.params.id);
     
     if (!handover) {
+      console.log('❌ Handover not found:', req.params.id);
       return res.status(404).json({ message: 'Shift handover not found' });
     }
 
     if (handover.isCompleted) {
+      console.log('❌ Handover already completed:', req.params.id);
       return res.status(400).json({ message: 'Handover already completed' });
     }
 
+    console.log('✅ Updating handover to completed...');
     handover.isCompleted = true;
     handover.completedAt = new Date();
     handover.completedBy = req.user.id;
 
     await handover.save();
+    console.log('✅ Handover saved successfully');
     
     const populatedHandover = await ShiftHandover.findById(handover._id)
       .populate('handoverFrom', 'firstName lastName')
       .populate('completedBy', 'firstName lastName');
 
+    console.log('✅ Sending completed handover response');
     res.json(populatedHandover);
   } catch (error) {
-    console.error('Error completing shift handover:', error);
+    console.error('❌ Error completing shift handover:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
