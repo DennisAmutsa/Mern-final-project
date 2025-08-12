@@ -279,8 +279,8 @@ router.put('/:id/status', async (req, res) => {
     
     // Update patient or user status
     if (patient) {
-      patient.status = patientStatus;
-      await patient.save();
+    patient.status = patientStatus;
+    await patient.save();
       console.log('✅ Updated patient status to:', patientStatus);
     } else if (user) {
       // For users, we might want to update a different field or create a patient record

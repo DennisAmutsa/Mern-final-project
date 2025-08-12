@@ -776,6 +776,12 @@ router.get('/nurse-dashboard', async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
+    // Import the new models
+    const Vitals = require('../models/Vitals');
+    const LabResult = require('../models/LabResult');
+    const CareTask = require('../models/CareTask');
+    const PatientNote = require('../models/PatientNote');
+    
     // Patients under care
     const patientsUnderCare = await User.countDocuments({ role: 'user', isActive: true });
     
@@ -787,13 +793,18 @@ router.get('/nurse-dashboard', async (req, res) => {
     });
     
     // Vitals checked today
-    const vitalsChecked = await User.countDocuments({
-      role: 'user',
-      lastVitalCheck: { $gte: today, $lt: tomorrow }
+    const vitalsChecked = await Vitals.countDocuments({
+      recordedAt: { $gte: today, $lt: tomorrow }
     });
     
     // Emergency alerts
     const emergencyAlerts = await User.countDocuments({ role: 'user', status: 'Emergency' });
+    
+    // Lab results pending
+    const labResultsPending = await LabResult.countDocuments({ status: 'Pending' });
+    
+    // Critical vitals
+    const criticalVitals = await Vitals.countDocuments({ status: 'Critical' });
     
     // Calculate changes from yesterday
     const yesterday = new Date(today);
@@ -805,9 +816,8 @@ router.get('/nurse-dashboard', async (req, res) => {
       createdAt: { $gte: yesterday, $lt: today }
     });
     
-    const yesterdayVitals = await User.countDocuments({
-      role: 'user',
-      lastVitalCheck: { $gte: yesterday, $lt: today }
+    const yesterdayVitals = await Vitals.countDocuments({
+      recordedAt: { $gte: yesterday, $lt: today }
     });
     
     const yesterdayEmergency = await User.countDocuments({ 
@@ -836,17 +846,125 @@ router.get('/nurse-dashboard', async (req, res) => {
     const medicationChange = yesterdayMedications > 0 ? 
       `${((medicationsDue - yesterdayMedications) / yesterdayMedications * 100).toFixed(1)}%` : '0%';
 
+    // Get real care tasks
+    const careTasks = await CareTask.find({ 
+      status: { $in: ['Pending', 'In Progress'] },
+      dueDate: { $lte: new Date(Date.now() + 24 * 60 * 60 * 1000) } // Due within 24 hours
+    })
+      .populate('patient', 'firstName lastName')
+      .populate('assignedTo', 'firstName lastName')
+      .sort({ priority: -1, dueDate: 1 })
+      .limit(5);
+
+    // Get medication schedule from appointments
+    const medicationSchedule = await Appointment.find({
+      type: 'Medication',
+      appointmentDate: { $gte: today, $lt: tomorrow },
+      status: { $in: ['Scheduled', 'Confirmed'] }
+    })
+      .populate('patient', 'firstName lastName')
+      .populate('doctor', 'firstName lastName')
+      .sort({ appointmentTime: 1 })
+      .limit(5);
+
+    // Get latest vitals for monitoring
+    const vitalsMonitoring = await Vitals.aggregate([
+      {
+        $sort: { recordedAt: -1 }
+      },
+      {
+        $group: {
+          _id: '$patient',
+          latestVitals: { $first: '$$ROOT' }
+        }
+      },
+      {
+        $replaceRoot: { newRoot: '$latestVitals' }
+      },
+      {
+        $limit: 5
+      }
+    ]);
+
+    await Vitals.populate(vitalsMonitoring, [
+      { path: 'patient', select: 'firstName lastName' },
+      { path: 'recordedBy', select: 'firstName lastName' }
+    ]);
+
+    // Get pending lab results
+    const labResults = await LabResult.find({ status: 'Pending' })
+      .populate('patient', 'firstName lastName')
+      .populate('orderedBy', 'firstName lastName')
+      .sort({ expectedCompletion: 1 })
+      .limit(5);
+
+    // Get active patients for notes functionality
+    const patients = await User.find({ role: 'user', isActive: true })
+      .select('firstName lastName _id')
+      .sort({ firstName: 1, lastName: 1 });
+
+    // Get latest shift handover notes
+    const shiftNotes = await PatientNote.findOne({
+      type: 'shift_handover',
+      createdAt: { $gte: today, $lt: tomorrow }
+    })
+      .sort({ createdAt: -1 });
+
+    // Format the data for frontend
+    const formattedCareTasks = careTasks.map(task => ({
+      patientName: `${task.patient.firstName} ${task.patient.lastName}`,
+      task: task.task,
+      room: task.room,
+      priority: task.priority
+    }));
+
+    const formattedMedicationSchedule = medicationSchedule.map(apt => ({
+      patientName: `${apt.patient.firstName} ${apt.patient.lastName}`,
+      medication: apt.reason || 'Medication',
+      dosage: apt.symptoms || 'As prescribed',
+      time: apt.appointmentTime
+    }));
+
+    const formattedVitalsMonitoring = vitalsMonitoring.map(vital => ({
+      patientName: `${vital.patient.firstName} ${vital.patient.lastName}`,
+      bloodPressure: `${vital.bloodPressure.systolic}/${vital.bloodPressure.diastolic}`,
+      heartRate: vital.heartRate,
+      temperature: vital.temperature,
+      status: vital.status
+    }));
+
+    const formattedLabResults = labResults.map(lab => ({
+      patientName: `${lab.patient.firstName} ${lab.patient.lastName}`,
+      testType: lab.testName,
+      orderedDate: lab.orderedDate.toLocaleDateString(),
+      expectedTime: lab.expectedCompletion.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      })
+    }));
+
     res.json({
       overview: {
         patientsUnderCare,
         medicationsDue,
         vitalsChecked,
         emergencyAlerts,
+        labResultsPending,
+        criticalVitals,
         patientChange: patientChange.startsWith('-') ? patientChange : `+${patientChange}`,
         medicationChange,
         vitalChange: vitalChange.startsWith('-') ? vitalChange : `+${vitalChange}`,
-        emergencyChange: emergencyChange.startsWith('-') ? emergencyChange : `+${emergencyChange}`
-      }
+        emergencyChange: emergencyChange.startsWith('-') ? emergencyChange : `+${emergencyChange}`,
+        labChange: '+0%',
+        criticalChange: '+0%'
+      },
+      careTasks: formattedCareTasks,
+      medicationSchedule: formattedMedicationSchedule,
+      vitalsMonitoring: formattedVitalsMonitoring,
+      labResults: formattedLabResults,
+      patients,
+      shiftNotes: shiftNotes ? shiftNotes.note : 'No special notes for handover. All patients stable.'
     });
   } catch (error) {
     console.error('Error fetching nurse dashboard stats:', error);

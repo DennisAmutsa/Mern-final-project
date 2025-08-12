@@ -25,7 +25,9 @@ import {
   Settings,
   Building,
   Database,
-  Activity
+  Activity,
+  Clipboard,
+  Clock
 } from 'lucide-react';
 
 const adminGroups = [
@@ -117,7 +119,13 @@ const Layout = () => {
           { name: 'Patients', href: '/nurse-dashboard/patients', icon: Users },
           { name: 'Appointments', href: '/nurse-dashboard/appointments', icon: Calendar },
           { name: 'Emergency', href: '/nurse-dashboard/emergency', icon: AlertTriangle },
-          { name: 'Medications', href: '/nurse-dashboard/inventory', icon: Package },
+          { name: 'Vitals', href: '/nurse-dashboard/vitals', icon: Activity },
+          { name: 'Care Tasks', href: '/nurse-dashboard/care-tasks', icon: Clipboard },
+          { name: 'Patient Notes', href: '/nurse-dashboard/patient-notes', icon: FileText },
+          { name: 'Medications', href: '/nurse-dashboard/medications', icon: Package },
+          { name: 'Lab Results', href: '/nurse-dashboard/lab-results', icon: FileText },
+          { name: 'Shift Handover', href: '/nurse-dashboard/shift-handover', icon: Clock },
+          { name: 'Reports', href: '/nurse-dashboard/reports', icon: BarChart3 },
         ];
       case 'receptionist':
         return [

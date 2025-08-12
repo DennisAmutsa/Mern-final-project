@@ -105,6 +105,9 @@ app.use('/api/billing', require('./routes/billing'));
 app.use('/api/budget', require('./routes/budget'));
 app.use('/api/financial-reports', require('./routes/financialReports'));
 app.use('/api/backup', require('./routes/backup'));
+app.use('/api/vitals', require('./routes/vitals'));
+app.use('/api/care-tasks', require('./routes/careTasks'));
+app.use('/api/patient-notes', require('./routes/patientNotes'));
 console.log('Routes registered successfully');
 
 // Health check endpoint
