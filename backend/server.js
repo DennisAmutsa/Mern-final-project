@@ -138,7 +138,18 @@ app.get('/api/health', (req, res) => {
     status: 'OK',
     message: 'Hospital Management System Good Health and Well-being',
     timestamp: new Date().toISOString(),
-    database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
+    database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
+    cors: 'Enabled',
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Simple ping endpoint for testing
+app.get('/api/ping', (req, res) => {
+  res.json({ 
+    message: 'pong', 
+    timestamp: new Date().toISOString(),
+    server: 'running'
   });
 });
 
