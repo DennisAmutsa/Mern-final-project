@@ -13,8 +13,13 @@ router.get('/sdg3-overview', async (req, res) => {
     // Patient statistics - using User model with role 'user'
     const totalPatients = await User.countDocuments({ role: 'user' });
     const activePatients = await User.countDocuments({ role: 'user', status: 'Active' });
-    const emergencyPatients = await User.countDocuments({ role: 'user', status: 'Emergency' });
     const dischargedPatients = await User.countDocuments({ role: 'user', status: 'Discharged' });
+    
+    // Emergency cases - count from appointments, not user status
+    const emergencyPatients = await Appointment.countDocuments({ 
+      type: 'Emergency',
+      status: { $in: ['In Progress', 'Confirmed', 'Scheduled'] } // Active emergency cases
+    });
     
     // Doctor statistics - using User model with role 'doctor'
     const totalDoctors = await User.countDocuments({ role: 'doctor' });

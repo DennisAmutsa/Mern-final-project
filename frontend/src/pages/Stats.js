@@ -131,7 +131,7 @@ const Stats = () => {
         apiClient.get(`/api/stats/sdg3-overview?days=${dateRange}&department=${selectedDepartment}`).then(r => r.data),
         apiClient.get(`/api/stats/department-performance?days=${dateRange}`).then(r => r.data)
       ]);
-      setOverview(sdg3Res);
+      setOverview(sdg3Res.overview || sdg3Res);
       setDepartments(deptRes);
       setAgeStats(sdg3Res.ageStats || []);
       setGenderStats(sdg3Res.genderStats || []);
@@ -244,11 +244,11 @@ const Stats = () => {
         doc.text('Overview Statistics', 20, 45);
         doc.setFontSize(12);
         
-        // Use the actual data from the API response
-        const totalPatients = overview?.totalPatients || overview?.patients || departments.reduce((sum, dept) => sum + (dept.patientCount || 0), 0);
-        const activeDoctors = overview?.activeDoctors || overview?.doctors || 0;
-        const todayAppointments = overview?.todayAppointments || overview?.appointments || 0;
-        const emergencyCases = overview?.emergencyPatients || overview?.emergency || departments.reduce((sum, dept) => sum + (dept.emergencyPatients || 0), 0);
+        // Use the actual data from the API response - the overview object contains the correct data
+        const totalPatients = overview?.totalPatients || 0;
+        const activeDoctors = overview?.activeDoctors || 0;
+        const todayAppointments = overview?.todayAppointments || 0;
+        const emergencyCases = overview?.emergencyPatients || 0;
         
         doc.text(`Total Patients: ${totalPatients}`, 20, 55);
         doc.text(`Active Doctors: ${activeDoctors}`, 20, 65);
@@ -387,49 +387,49 @@ const Stats = () => {
         
         {/* Status and Connection Info */}
         <div className="flex items-center space-x-2 text-sm text-gray-500">
-          <Clock className="h-4 w-4" />
+            <Clock className="h-4 w-4" />
           <span className="hidden sm:inline">{new Date().toLocaleDateString()}</span>
           <span className="sm:hidden">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
           <div className="flex items-center space-x-1 ml-2 lg:ml-4">
-            {isConnected ? (
-              <>
-                <Wifi className="h-4 w-4 text-green-500" />
+              {isConnected ? (
+                <>
+                  <Wifi className="h-4 w-4 text-green-500" />
                 <span className="text-green-600 hidden sm:inline">Live</span>
-              </>
-            ) : (
-              <>
-                <WifiOff className="h-4 w-4 text-red-500" />
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-4 w-4 text-red-500" />
                 <span className="text-red-600 hidden sm:inline">Offline</span>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
         
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
             className="flex items-center space-x-1 px-2 py-1 lg:px-3 lg:py-2 text-xs lg:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-          >
+            >
             <Filter className="h-3 w-3 lg:h-4 lg:w-4" />
             <span className="hidden sm:inline">Filters</span>
-          </button>
-          <button
-            onClick={fetchStats}
+            </button>
+            <button
+              onClick={fetchStats}
             className="flex items-center space-x-1 px-2 py-1 lg:px-3 lg:py-2 text-xs lg:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-          >
+            >
             <RefreshCw className="h-3 w-3 lg:h-4 lg:w-4" />
             <span className="hidden sm:inline">Refresh</span>
-          </button>
-          <button
-            onClick={() => exportAnalytics('csv')}
-            disabled={exporting}
+            </button>
+            <button
+              onClick={() => exportAnalytics('csv')}
+              disabled={exporting}
             className="flex items-center space-x-1 px-2 py-1 lg:px-3 lg:py-2 text-xs lg:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-          >
+            >
             <FileText className="h-3 w-3 lg:h-4 lg:w-4" />
             <span className="hidden sm:inline">{exporting ? 'Exporting...' : 'Export CSV'}</span>
-          </button>
-                      <button
+            </button>
+            <button
               onClick={() => exportAnalytics('pdf')}
               disabled={exporting}
               className="flex items-center space-x-1 px-2 py-1 lg:px-3 lg:py-2 text-xs lg:text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
