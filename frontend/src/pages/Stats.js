@@ -224,6 +224,9 @@ const Stats = () => {
         link.click();
         document.body.removeChild(link);
       } else if (format === 'pdf') {
+        // Debug: Log the data structure
+        console.log('PDF Export Data:', { overview, departments, monthlyStats });
+        
         // Create PDF content using jsPDF
         const { jsPDF } = await import('jspdf');
         const doc = new jsPDF();
@@ -240,10 +243,17 @@ const Stats = () => {
         doc.setFontSize(16);
         doc.text('Overview Statistics', 20, 45);
         doc.setFontSize(12);
-        doc.text(`Total Patients: ${overview?.totalPatients || 0}`, 20, 55);
-        doc.text(`Active Doctors: ${overview?.activeDoctors || 0}`, 20, 65);
-        doc.text(`Today's Appointments: ${overview?.todayAppointments || 0}`, 20, 75);
-        doc.text(`Emergency Cases: ${overview?.emergencyPatients || 0}`, 20, 85);
+        
+        // Use the actual data from the API response
+        const totalPatients = overview?.totalPatients || overview?.patients || departments.reduce((sum, dept) => sum + (dept.patientCount || 0), 0);
+        const activeDoctors = overview?.activeDoctors || overview?.doctors || 0;
+        const todayAppointments = overview?.todayAppointments || overview?.appointments || 0;
+        const emergencyCases = overview?.emergencyPatients || overview?.emergency || departments.reduce((sum, dept) => sum + (dept.emergencyPatients || 0), 0);
+        
+        doc.text(`Total Patients: ${totalPatients}`, 20, 55);
+        doc.text(`Active Doctors: ${activeDoctors}`, 20, 65);
+        doc.text(`Today's Appointments: ${todayAppointments}`, 20, 75);
+        doc.text(`Emergency Cases: ${emergencyCases}`, 20, 85);
         
         // Add department performance
         let yPos = 105; // Initialize yPos for the entire PDF section
