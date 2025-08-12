@@ -3,6 +3,7 @@ import { AlertTriangle, Plus, Clock, User, Activity, Search, Wifi, WifiOff, File
 import toast from 'react-hot-toast';
 import io from 'socket.io-client';
 import { API_BASE_URL, WS_BASE_URL } from '../config/api';
+import jsPDF from 'jspdf';
 
 const PAGE_SIZE = 10;
 
@@ -231,24 +232,91 @@ const Emergency = () => {
     toast.success('Emergencies exported as CSV!');
   };
 
-  const exportEmergenciesJSON = () => {
+  const exportEmergenciesPDF = () => {
     if (!emergencies.length) return;
-    const data = {
-      emergencies,
-      stats,
-      exportDate: new Date().toISOString(),
-      generatedBy: 'Hospital Management System'
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `emergencies-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success('Emergencies exported as JSON!');
+    
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
+    let yPos = 20;
+    
+    // Title
+    doc.setFontSize(20);
+    doc.setFont(undefined, 'bold');
+    doc.text('Emergency Cases Report', pageWidth / 2, yPos, { align: 'center' });
+    
+    // Date
+    yPos += 15;
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPos, { align: 'center' });
+    
+    // Summary Statistics
+    yPos += 20;
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Summary Statistics', 20, yPos);
+    
+    yPos += 10;
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Total Emergency Cases: ${stats.totalEmergency}`, 20, yPos);
+    yPos += 7;
+    doc.text(`Today's Cases: ${stats.todayEmergency}`, 20, yPos);
+    yPos += 7;
+    doc.text(`Resolved Today: ${stats.resolvedToday}`, 20, yPos);
+    yPos += 7;
+    doc.text(`Available Staff: ${stats.availableStaff}`, 20, yPos);
+    
+    // Emergency Cases List
+    yPos += 15;
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Emergency Cases Details', 20, yPos);
+    
+    yPos += 10;
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    
+    emergencies.forEach((emergency, index) => {
+      // Check if we need a new page
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      const patientName = emergency.patient ? `${emergency.patient.firstName} ${emergency.patient.lastName}` : 'Unknown Patient';
+      const doctorName = emergency.appointment?.doctor ? `${emergency.appointment.doctor.firstName} ${emergency.appointment.doctor.lastName}` : 'Unassigned';
+      const emergencyType = emergency.appointment?.reason || 'Unknown';
+      const severity = emergency.appointment?.priority || 'Unknown';
+      const status = emergency.appointment?.status || 'Unknown';
+      const createdAt = emergency.appointment?.createdAt ? new Date(emergency.appointment.createdAt).toLocaleString() : 'Unknown';
+      
+      doc.setFont(undefined, 'bold');
+      doc.text(`Case ${index + 1}: ${emergencyType}`, 20, yPos);
+      yPos += 5;
+      
+      doc.setFont(undefined, 'normal');
+      doc.text(`Patient: ${patientName}`, 25, yPos);
+      yPos += 4;
+      doc.text(`Doctor: ${doctorName}`, 25, yPos);
+      yPos += 4;
+      doc.text(`Severity: ${severity}`, 25, yPos);
+      yPos += 4;
+      doc.text(`Status: ${status}`, 25, yPos);
+      yPos += 4;
+      doc.text(`Created: ${createdAt}`, 25, yPos);
+      
+      if (emergency.appointment?.symptoms) {
+        yPos += 4;
+        doc.text(`Symptoms: ${emergency.appointment.symptoms}`, 25, yPos);
+      }
+      
+      yPos += 8; // Space between cases
+    });
+    
+    // Save the PDF
+    doc.save(`emergency-cases-${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('Emergency cases exported as PDF!');
   };
 
   return (
@@ -277,9 +345,9 @@ const Emergency = () => {
             <FileText className="h-4 w-4" />
             <span>Export CSV</span>
           </button>
-          <button onClick={exportEmergenciesJSON} className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+          <button onClick={exportEmergenciesPDF} className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
             <Download className="h-4 w-4" />
-            <span>Export JSON</span>
+            <span>Export PDF</span>
           </button>
           <button onClick={() => setShowAddModal(true)} className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center space-x-2">
             <Plus className="h-4 w-4" />
