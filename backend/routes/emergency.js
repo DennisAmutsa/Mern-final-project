@@ -52,7 +52,7 @@ router.get('/', async (req, res) => {
       const filtered = results.filter(r => r.patient._id.toString() === patient);
       res.json(filtered);
     } else {
-      res.json(results);
+    res.json(results);
     }
   } catch (error) {
     console.error('Error fetching emergencies:', error);
@@ -107,28 +107,28 @@ router.post('/', async (req, res) => {
     } else {
       // Update existing patient status to emergency
       patient = await Patient.findByIdAndUpdate(
-        patientId,
-        { 
-          status: 'Emergency',
-          department: 'Emergency'
-        },
-        { new: true }
-      );
+      patientId,
+      { 
+        status: 'Emergency',
+        department: 'Emergency'
+      },
+      { new: true }
+    );
     }
     
-         // Create emergency appointment
-     const emergencyAppointment = new Appointment({
+    // Create emergency appointment
+    const emergencyAppointment = new Appointment({
        patient: patientId, // Use the original user ID, not the patient record ID
-       doctor: assignedDoctor,
-       appointmentDate: new Date(),
-       appointmentTime: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-       type: 'Emergency',
-       status: 'In Progress',
-       priority: severity === 'Critical' ? 'Emergency' : 'High',
-       reason: emergencyType,
-       symptoms: symptoms,
-       department: 'Emergency'
-     });
+      doctor: assignedDoctor,
+      appointmentDate: new Date(),
+      appointmentTime: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+      type: 'Emergency',
+      status: 'In Progress',
+      priority: severity === 'Critical' ? 'Emergency' : 'High',
+      reason: emergencyType,
+      symptoms: symptoms,
+      department: 'Emergency'
+    });
     
     await emergencyAppointment.save();
     console.log('✅ Created emergency appointment for patient:', patient._id);
@@ -221,22 +221,43 @@ router.put('/:id/status', async (req, res) => {
   try {
     const { status, outcome } = req.body;
     
+    console.log('🔍 Updating emergency status for ID:', req.params.id, 'Status:', status);
+    
     // Validate status
     const validAppointmentStatuses = ['Scheduled', 'Confirmed', 'In Progress', 'Completed', 'Cancelled', 'No Show'];
     if (!validAppointmentStatuses.includes(status)) {
       return res.status(400).json({ error: 'Invalid status value' });
     }
     
-    // Find the patient
-    const patient = await Patient.findById(req.params.id);
-    if (!patient) {
+    // First try to find the emergency appointment directly
+    const latestApt = await Appointment.findOne({ 
+      $or: [
+        { patient: req.params.id, type: 'Emergency' },
+        { _id: req.params.id, type: 'Emergency' }
+      ]
+    }).sort({ createdAt: -1 });
+    
+    if (!latestApt) {
+      console.log('❌ Emergency appointment not found for ID:', req.params.id);
       return res.status(404).json({ error: 'Emergency case not found' });
     }
     
-    // Update latest emergency appointment for this patient
-    const latestApt = await Appointment.findOne({ patient: req.params.id, type: 'Emergency' }).sort({ createdAt: -1 });
-    if (!latestApt) {
-      return res.status(404).json({ error: 'Emergency appointment not found' });
+    console.log('✅ Found emergency appointment:', latestApt._id);
+    
+    // Find the patient/user
+    let patient = await Patient.findById(latestApt.patient);
+    let user = null;
+    
+    if (!patient) {
+      // If no patient record, try to find the user
+      user = await User.findById(latestApt.patient);
+      if (!user) {
+        console.log('❌ Neither patient nor user found for ID:', latestApt.patient);
+        return res.status(404).json({ error: 'Patient not found' });
+      }
+      console.log('✅ Found user:', user.firstName, user.lastName);
+    } else {
+      console.log('✅ Found patient:', patient.firstName, patient.lastName);
     }
     
     // Update appointment status
@@ -244,7 +265,9 @@ router.put('/:id/status', async (req, res) => {
     if (outcome) latestApt.outcome = outcome;
     await latestApt.save();
     
-    // Update patient status based on appointment status
+    console.log('✅ Updated appointment status to:', status);
+    
+    // Update patient/user status based on appointment status
     let patientStatus = 'Active';
     if (status === 'Completed') {
       patientStatus = 'Discharged';
@@ -254,14 +277,21 @@ router.put('/:id/status', async (req, res) => {
       patientStatus = 'Emergency';
     }
     
-    // Update patient status
-    patient.status = patientStatus;
-    await patient.save();
+    // Update patient or user status
+    if (patient) {
+      patient.status = patientStatus;
+      await patient.save();
+      console.log('✅ Updated patient status to:', patientStatus);
+    } else if (user) {
+      // For users, we might want to update a different field or create a patient record
+      console.log('✅ User status update not implemented yet');
+    }
     
     // Emit real-time update
     if (global.io) {
+      const patientName = patient ? `${patient.firstName} ${patient.lastName}` : `${user.firstName} ${user.lastName}`;
       global.io.to('emergency').emit('emergency-update', {
-        patientName: `${patient.firstName} ${patient.lastName}`,
+        patientName: patientName,
         status: status,
         timestamp: new Date().toISOString()
       });
@@ -269,7 +299,8 @@ router.put('/:id/status', async (req, res) => {
     
     res.json({
       message: 'Emergency case status updated successfully',
-      patient: { ...patient.toObject(), appointment: latestApt }
+      appointment: latestApt,
+      patient: patient ? patient.toObject() : user.toObject()
     });
   } catch (error) {
     console.error('Error updating emergency status:', error);
