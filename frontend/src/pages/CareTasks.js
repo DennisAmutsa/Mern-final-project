@@ -221,7 +221,7 @@ const CareTasks = () => {
           className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus className="h-4 w-4" />
-          <span>Create Task</span>
+          <span>{user?.role === 'nurse' ? 'Request Care Task' : 'Create Task'}</span>
         </button>
       </div>
 
@@ -368,7 +368,9 @@ const CareTasks = () => {
       {showAddTask && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Create Care Task</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              {user?.role === 'nurse' ? 'Request Care Task' : 'Create Care Task'}
+            </h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Patient *</label>
@@ -507,7 +509,7 @@ const CareTasks = () => {
                   onClick={handleAddTask}
                   className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
                 >
-                  Create Task
+                  {user?.role === 'nurse' ? 'Request Care Task' : 'Create Task'}
                 </button>
               </div>
             </div>
