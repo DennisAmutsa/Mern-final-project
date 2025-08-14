@@ -3,6 +3,7 @@ const router = express.Router();
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const Patient = require('../models/Patient');
+const { authenticateToken } = require('../middleware/auth');
 
 // Place this route FIRST!
 router.get('/available-slots', async (req, res) => {
@@ -22,12 +23,25 @@ router.get('/available-slots', async (req, res) => {
 });
 
 // Get all appointments with pagination and filters
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const { page = 1, limit = 10, date, doctor, patient, status, type } = req.query;
     const skip = (page - 1) * limit;
     
     let query = {};
+    
+    // Role-based filtering
+    const userRole = req.user.role;
+    
+    // If user is admin, nurse, or receptionist, they can see all appointments
+    // If user is doctor, only show their appointments
+    // If user is patient, only show their appointments
+    if (userRole === 'doctor') {
+      query.doctor = req.user._id;
+    } else if (userRole === 'user' || userRole === 'patient') {
+      query.patient = req.user._id;
+    }
+    // For admin, nurse, receptionist - no additional filtering needed (see all)
     
     // Filter by date
     if (date) {
@@ -37,13 +51,16 @@ router.get('/', async (req, res) => {
       query.appointmentDate = { $gte: startDate, $lt: endDate };
     }
     
-    // Filter by doctor
-    if (doctor) {
+    // Additional doctor filter (for admin/nurse/receptionist to filter by specific doctor)
+    if (doctor && (userRole === 'admin' || userRole === 'nurse' || userRole === 'receptionist')) {
       query.doctor = doctor;
+    } else if (doctor && userRole === 'doctor') {
+      // If doctor is filtering by another doctor, ignore it (they can only see their own)
+      // This prevents doctors from seeing other doctors' appointments
     }
     
-    // Filter by patient
-    if (patient) {
+    // Additional patient filter (for admin/nurse/receptionist to filter by specific patient)
+    if (patient && (userRole === 'admin' || userRole === 'nurse' || userRole === 'receptionist')) {
       query.patient = patient;
     }
     
@@ -57,16 +74,22 @@ router.get('/', async (req, res) => {
       query.type = type;
     }
     
-    const appointments = await Appointment.find(query)
-      .populate('patient', 'firstName lastName patientId')
-      .populate('doctor', 'firstName lastName specialization')
+    // Apply pagination for all roles
+    let appointmentsQuery = Appointment.find(query)
+      .populate('patient', 'firstName lastName patientId email')
+      .populate('doctor', 'firstName lastName specialization email')
       .sort({ appointmentDate: 1, appointmentTime: 1 })
       .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
+      .limit(parseInt(limit));
     
-    const total = await Appointment.countDocuments(query);
+    let totalQuery = Appointment.countDocuments(query);
     
+    const [appointments, total] = await Promise.all([
+      appointmentsQuery.lean(),
+      totalQuery
+    ]);
+    
+    // Return paginated results for all roles
     res.json({
       appointments,
       pagination: {
@@ -78,12 +101,13 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Error fetching appointments:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 // Place this route BEFORE any /:id route!
-router.get('/patient', async (req, res) => {
+router.get('/patient', authenticateToken, async (req, res) => {
   try {
     console.log('--- /api/appointments/patient called ---');
     const { patientId, email } = req.query;
@@ -135,7 +159,7 @@ router.get('/patient', async (req, res) => {
 });
 
 // Get single appointment by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id)
       .populate('patient', 'firstName lastName patientId dateOfBirth gender bloodType contactInfo')
@@ -153,7 +177,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new appointment
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const { doctor, patient, appointmentDate, appointmentTime, duration, userEmail, reason, type, priority, department } = req.body;
     
@@ -265,7 +289,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update appointment
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const appointment = await Appointment.findByIdAndUpdate(
       req.params.id,
@@ -289,7 +313,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete appointment
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const appointment = await Appointment.findByIdAndDelete(req.params.id);
     
@@ -304,21 +328,33 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Get appointments for today
-router.get('/today/schedule', async (req, res) => {
+router.get('/today/schedule', authenticateToken, async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    const appointments = await Appointment.find({
+    let query = {
       appointmentDate: { $gte: today, $lt: tomorrow },
       status: { $in: ['Scheduled', 'Confirmed'] }
-    })
-    .populate('patient', 'firstName lastName patientId')
-    .populate('doctor', 'firstName lastName specialization department')
-    .sort({ appointmentTime: 1 })
-    .lean();
+    };
+    
+    // Role-based filtering
+    const userRole = req.user.role;
+    
+    if (userRole === 'doctor') {
+      query.doctor = req.user._id;
+    } else if (userRole === 'user' || userRole === 'patient') {
+      query.patient = req.user._id;
+    }
+    // For admin, nurse, receptionist - no additional filtering needed (see all)
+    
+    const appointments = await Appointment.find(query)
+      .populate('patient', 'firstName lastName patientId email')
+      .populate('doctor', 'firstName lastName specialization department email')
+      .sort({ appointmentTime: 1 })
+      .lean();
     
     res.json(appointments);
   } catch (error) {
@@ -327,20 +363,32 @@ router.get('/today/schedule', async (req, res) => {
 });
 
 // Get appointments by date range
-router.get('/date-range/:startDate/:endDate', async (req, res) => {
+router.get('/date-range/:startDate/:endDate', authenticateToken, async (req, res) => {
   try {
     const { startDate, endDate } = req.params;
     const start = new Date(startDate);
     const end = new Date(endDate);
     end.setDate(end.getDate() + 1);
     
-    const appointments = await Appointment.find({
+    let query = {
       appointmentDate: { $gte: start, $lt: end }
-    })
-    .populate('patient', 'firstName lastName patientId')
-    .populate('doctor', 'firstName lastName specialization')
-    .sort({ appointmentDate: 1, appointmentTime: 1 })
-    .lean();
+    };
+    
+    // Role-based filtering
+    const userRole = req.user.role;
+    
+    if (userRole === 'doctor') {
+      query.doctor = req.user._id;
+    } else if (userRole === 'user' || userRole === 'patient') {
+      query.patient = req.user._id;
+    }
+    // For admin, nurse, receptionist - no additional filtering needed (see all)
+    
+    const appointments = await Appointment.find(query)
+      .populate('patient', 'firstName lastName patientId email')
+      .populate('doctor', 'firstName lastName specialization email')
+      .sort({ appointmentDate: 1, appointmentTime: 1 })
+      .lean();
     
     res.json(appointments);
   } catch (error) {
@@ -349,10 +397,22 @@ router.get('/date-range/:startDate/:endDate', async (req, res) => {
 });
 
 // Get appointment statistics
-router.get('/stats/overview', async (req, res) => {
+router.get('/stats/overview', authenticateToken, async (req, res) => {
   try {
-    const totalAppointments = await Appointment.countDocuments();
+    // Role-based filtering
+    const userRole = req.user.role;
+    let baseQuery = {};
+    
+    if (userRole === 'doctor') {
+      baseQuery.doctor = req.user._id;
+    } else if (userRole === 'user' || userRole === 'patient') {
+      baseQuery.patient = req.user._id;
+    }
+    // For admin, nurse, receptionist - no additional filtering needed (see all)
+    
+    const totalAppointments = await Appointment.countDocuments(baseQuery);
     const todayAppointments = await Appointment.countDocuments({
+      ...baseQuery,
       appointmentDate: {
         $gte: new Date().setHours(0, 0, 0, 0),
         $lt: new Date().setHours(23, 59, 59, 999)
@@ -360,6 +420,7 @@ router.get('/stats/overview', async (req, res) => {
     });
     
     const statusStats = await Appointment.aggregate([
+      { $match: baseQuery },
       {
         $group: {
           _id: '$status',
@@ -369,6 +430,7 @@ router.get('/stats/overview', async (req, res) => {
     ]);
     
     const typeStats = await Appointment.aggregate([
+      { $match: baseQuery },
       {
         $group: {
           _id: '$type',
@@ -378,6 +440,7 @@ router.get('/stats/overview', async (req, res) => {
     ]);
     
     const monthlyStats = await Appointment.aggregate([
+      { $match: baseQuery },
       {
         $group: {
           _id: {
@@ -404,7 +467,7 @@ router.get('/stats/overview', async (req, res) => {
 });
 
 // Update appointment status
-router.put('/:id/status', async (req, res) => {
+router.put('/:id/status', authenticateToken, async (req, res) => {
   try {
     const { status } = req.body;
     

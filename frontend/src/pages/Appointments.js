@@ -16,18 +16,32 @@ const Appointments = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalAppointments, setTotalAppointments] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
+  const [hasPrev, setHasPrev] = useState(false);
   const isReceptionist = user?.role === 'receptionist';
   const isAdmin = user?.role === 'admin';
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = async (page = 1) => {
     try {
+      setLoading(true);
       // Use user.id instead of user._id (MongoDB vs API response format)
       const userId = user?.id || user?._id;
-      let url = '/api/appointments';
+      let url = `/api/appointments?page=${page}&limit=10`;
       
       if (user?.role === 'doctor' && userId) {
-        url += `?doctor=${userId}`;
+        url += `&doctor=${userId}`;
         console.log('🔍 Fetching appointments for doctor:', userId);
+      }
+      
+      // Add filters to URL
+      if (statusFilter) {
+        url += `&status=${statusFilter}`;
+      }
+      if (dateFilter) {
+        url += `&date=${dateFilter}`;
       }
       
       console.log('📋 Fetching appointments from URL:', url);
@@ -36,10 +50,25 @@ const Appointments = () => {
       
       if (Array.isArray(response.data)) {
         setAppointments(response.data);
+        setCurrentPage(1);
+        setTotalPages(1);
+        setTotalAppointments(response.data.length);
+        setHasNext(false);
+        setHasPrev(false);
       } else if (Array.isArray(response.data.appointments)) {
         setAppointments(response.data.appointments);
+        setCurrentPage(response.data.pagination.currentPage);
+        setTotalPages(response.data.pagination.totalPages);
+        setTotalAppointments(response.data.pagination.totalAppointments);
+        setHasNext(response.data.pagination.hasNext);
+        setHasPrev(response.data.pagination.hasPrev);
       } else {
         setAppointments([]);
+        setCurrentPage(1);
+        setTotalPages(1);
+        setTotalAppointments(0);
+        setHasNext(false);
+        setHasPrev(false);
       }
     } catch (error) {
       console.error('❌ Error fetching appointments:', error);
@@ -70,13 +99,46 @@ const Appointments = () => {
   };
 
   useEffect(() => {
-    fetchAppointments();
+    fetchAppointments(currentPage);
     if (isReceptionist || isAdmin) {
       fetchPatients();
       fetchDoctors();
     }
     // eslint-disable-next-line
-  }, [user, isReceptionist, isAdmin]);
+  }, [user, isReceptionist, isAdmin, currentPage, statusFilter, dateFilter]);
+
+  // Pagination handlers
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const handleNextPage = () => {
+    if (hasNext) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (hasPrev) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  // Filter handlers
+  const handleStatusFilterChange = (status) => {
+    setStatusFilter(status);
+    setCurrentPage(1); // Reset to first page when filtering
+  };
+
+  const handleDateFilterChange = (date) => {
+    setDateFilter(date);
+    setCurrentPage(1); // Reset to first page when filtering
+  };
+
+  const handleSearchChange = (term) => {
+    setSearchTerm(term);
+    setCurrentPage(1); // Reset to first page when searching
+  };
 
   const statusOptions = ["Scheduled", "In Progress", "Completed", "Cancelled"];
 
@@ -97,7 +159,7 @@ const Appointments = () => {
     await apiClient.put(`/api/appointments/${id}`, { status: newStatus });
     setEditingId(null);
     setNewStatus('');
-    fetchAppointments();
+    fetchAppointments(currentPage);
   };
 
   const handleScheduleAppointment = async (e) => {
@@ -116,7 +178,7 @@ const Appointments = () => {
         priority: 'Medium',
         department: 'General Medicine'
       });
-      fetchAppointments();
+      fetchAppointments(currentPage);
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to schedule appointment');
     }
@@ -174,7 +236,7 @@ const Appointments = () => {
                 type="text"
                 placeholder="Search by patient or doctor..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -182,7 +244,7 @@ const Appointments = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => handleStatusFilterChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Status</option>
@@ -196,16 +258,16 @@ const Appointments = () => {
               <input
                 type="date"
                 value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
+                onChange={(e) => handleDateFilterChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div className="flex items-end">
               <button
                 onClick={() => {
-                  setSearchTerm('');
-                  setStatusFilter('');
-                  setDateFilter('');
+                  handleSearchChange('');
+                  handleStatusFilterChange('');
+                  handleDateFilterChange('');
                 }}
                 className="w-full px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
               >
@@ -218,6 +280,23 @@ const Appointments = () => {
 
       {/* Appointments Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {/* Summary Section */}
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-600">
+              Showing {appointments.length} of {totalAppointments} appointments
+              {totalPages > 1 && (
+                <span className="ml-2">(Page {currentPage} of {totalPages})</span>
+              )}
+            </div>
+            {totalAppointments > 0 && (
+              <div className="text-sm text-gray-600">
+                Total: {totalAppointments} appointment{totalAppointments !== 1 ? 's' : ''}
+              </div>
+            )}
+          </div>
+        </div>
+        
         <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
             <tr>
@@ -325,7 +404,7 @@ const Appointments = () => {
                                                               try {
                                 await apiClient.put(`/api/appointments/${appointment._id}`, { status: 'Cancelled' });
                                 toast.success('Appointment cancelled successfully!');
-                                fetchAppointments();
+                                fetchAppointments(currentPage);
                               } catch (error) {
                                 toast.error('Failed to cancel appointment');
                               }
@@ -345,6 +424,29 @@ const Appointments = () => {
         </tbody>
       </table>
       </div>
+
+      {/* Pagination Controls */}
+      {(totalPages > 1) && (
+        <div className="flex justify-center items-center space-x-2 mt-6">
+          <button
+            onClick={handlePrevPage}
+            disabled={!hasPrev}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-gray-700">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={handleNextPage}
+            disabled={!hasNext}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {/* Schedule Appointment Modal */}
       {showScheduleModal && (
