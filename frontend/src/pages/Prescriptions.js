@@ -246,24 +246,24 @@ const Prescriptions = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Prescriptions</h1>
-          <p className="text-gray-600">Manage and view patient prescriptions</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Prescriptions</h1>
+          <p className="text-sm sm:text-base text-gray-600">Manage and view patient prescriptions</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
           {user.role === 'doctor' && (
             <button
               onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 flex items-center space-x-2"
+              className="px-3 sm:px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 flex items-center justify-center space-x-2 text-sm"
             >
               <Plus className="h-4 w-4" />
               <span>Add Prescription</span>
             </button>
           )}
-          <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center space-x-2">
+          <button className="px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center justify-center space-x-2 text-sm">
             <Download className="h-4 w-4" />
             <span>Export</span>
           </button>
@@ -271,11 +271,11 @@ const Prescriptions = () => {
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           {user.role === 'doctor' ? (
             <>
-              <div className="lg:col-span-2">
+              <div className="sm:col-span-2 lg:col-span-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
@@ -283,7 +283,7 @@ const Prescriptions = () => {
                     placeholder="Search prescriptions..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   />
                 </div>
               </div>
@@ -292,7 +292,7 @@ const Prescriptions = () => {
                 <select
                   value={filterPatient}
                   onChange={(e) => setFilterPatient(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 >
                   <option value="">All Patients</option>
                   {patients.map(patient => (
@@ -307,7 +307,7 @@ const Prescriptions = () => {
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 >
                   <option value="all">All Status</option>
                   {statusOptions.map(status => (
@@ -324,7 +324,7 @@ const Prescriptions = () => {
                     setSortBy(field);
                     setSortOrder(order);
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 >
                   <option value="prescribedDate-desc">Date (Newest)</option>
                   <option value="prescribedDate-asc">Date (Oldest)</option>
@@ -338,7 +338,7 @@ const Prescriptions = () => {
           ) : (
             // For patients: only show basic search and sorting of their own prescriptions
             <>
-              <div className="lg:col-span-3">
+              <div className="sm:col-span-2 lg:col-span-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
@@ -346,7 +346,7 @@ const Prescriptions = () => {
                     placeholder="Search your prescriptions..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   />
                 </div>
               </div>
@@ -355,7 +355,7 @@ const Prescriptions = () => {
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 >
                   <option value="all">All Status</option>
                   {statusOptions.map(status => (
@@ -372,7 +372,7 @@ const Prescriptions = () => {
                     setSortBy(field);
                     setSortOrder(order);
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 >
                   <option value="prescribedDate-desc">Date (Newest)</option>
                   <option value="prescribedDate-asc">Date (Oldest)</option>
@@ -386,57 +386,57 @@ const Prescriptions = () => {
 
       {/* Prescriptions List */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">
+        <div className="p-4 sm:p-6 border-b border-gray-200">
+          <h3 className="text-base sm:text-lg font-medium text-gray-900">
             Prescriptions ({filteredPrescriptions.length})
           </h3>
         </div>
         
         <div className="divide-y divide-gray-200">
           {loading ? (
-            <div className="p-6 text-center">
+            <div className="p-4 sm:p-6 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="mt-2 text-gray-500">Loading prescriptions...</p>
+              <p className="mt-2 text-sm sm:text-base text-gray-500">Loading prescriptions...</p>
             </div>
           ) : filteredPrescriptions.length > 0 ? (
             filteredPrescriptions.map((prescription, index) => (
-              <div key={`${prescription.patientId}-${index}`} className="p-6 hover:bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                      <Pill className="h-4 w-4 text-purple-600" />
-                      <span className="text-sm font-medium text-gray-900">{prescription.name}</span>
+              <div key={`${prescription.patientId}-${index}`} className="p-4 sm:p-6 hover:bg-gray-50">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 min-w-0 flex-1">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <Pill className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                      <span className="text-sm font-medium text-gray-900 truncate">{prescription.name}</span>
                     </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-900">{prescription.patientName}</h4>
-                      <p className="text-sm text-gray-500">{prescription.dosage}</p>
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-medium text-gray-900 truncate">{prescription.patientName}</h4>
+                      <p className="text-sm text-gray-500 truncate">{prescription.dosage}</p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-4">
-                    <div className="text-right">
-                      <p className="text-sm text-gray-900">{prescription.prescribedBy}</p>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                    <div className="text-left sm:text-right">
+                      <p className="text-sm text-gray-900 truncate">{prescription.prescribedBy}</p>
                       <p className="text-sm text-gray-500">
                         {new Date(prescription.prescribedDate).toLocaleDateString()}
                       </p>
                     </div>
                     
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       {isExpired(prescription.endDate) && (
-                        <AlertTriangle className="h-4 w-4 text-red-500" title="Expired" />
+                        <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" title="Expired" />
                       )}
                       {isExpiringSoon(prescription.endDate) && (
-                        <Clock className="h-4 w-4 text-yellow-500" title="Expiring Soon" />
+                        <Clock className="h-4 w-4 text-yellow-500 flex-shrink-0" title="Expiring Soon" />
                       )}
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(prescription.status)}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(prescription.status)}`}>
                         {prescription.status}
                       </span>
                     </div>
                     
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => togglePrescriptionExpansion(`${prescription.patientId}-${index}`)}
-                        className="text-gray-400 hover:text-gray-600"
+                        className="text-gray-400 hover:text-gray-600 p-1"
                       >
                         {expandedPrescriptions.has(`${prescription.patientId}-${index}`) ? (
                           <ChevronUp className="h-4 w-4" />
@@ -449,7 +449,7 @@ const Prescriptions = () => {
                           setSelectedPrescription(prescription);
                           setShowPrescriptionModal(true);
                         }}
-                        className="text-blue-600 hover:text-blue-800"
+                        className="text-blue-600 hover:text-blue-800 p-1"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
@@ -459,7 +459,7 @@ const Prescriptions = () => {
                 
                 {expandedPrescriptions.has(`${prescription.patientId}-${index}`) && (
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <h5 className="text-sm font-medium text-gray-900 mb-2">Frequency</h5>
                         <p className="text-sm text-gray-600">{prescription.frequency || 'Not specified'}</p>
@@ -479,7 +479,7 @@ const Prescriptions = () => {
                         </div>
                       )}
                       {prescription.notes && (
-                        <div className="md:col-span-2">
+                        <div className="sm:col-span-2">
                           <h5 className="text-sm font-medium text-gray-900 mb-2">Notes</h5>
                           <p className="text-sm text-gray-600">{prescription.notes}</p>
                         </div>
@@ -490,10 +490,10 @@ const Prescriptions = () => {
               </div>
             ))
           ) : (
-            <div className="p-6 text-center">
-              <Pill className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No prescriptions found</p>
-              <p className="text-sm text-gray-400 mt-1">
+            <div className="p-4 sm:p-6 text-center">
+              <Pill className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-sm sm:text-base text-gray-500">No prescriptions found</p>
+              <p className="text-xs sm:text-sm text-gray-400 mt-1">
                 {searchTerm || filterPatient || filterStatus !== 'all' 
                   ? 'Try adjusting your search or filters' 
                   : 'Prescriptions will appear here when added'}
@@ -505,35 +505,35 @@ const Prescriptions = () => {
 
       {/* Prescription Details Modal */}
       {showPrescriptionModal && selectedPrescription && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Prescription Details</h3>
+              <h3 className="text-base sm:text-lg font-medium text-gray-900">Prescription Details</h3>
               <button
                 onClick={() => setShowPrescriptionModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 p-1"
               >
-                <X className="h-6 w-6" />
+                <X className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
             </div>
             
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Patient</p>
-                  <p className="text-sm font-medium text-gray-900">{selectedPrescription.patientName}</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{selectedPrescription.patientName}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Prescribed By</p>
-                  <p className="text-sm font-medium text-gray-900">{selectedPrescription.prescribedBy}</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{selectedPrescription.prescribedBy}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Medication</p>
-                  <p className="text-sm font-medium text-gray-900">{selectedPrescription.name}</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{selectedPrescription.name}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Dosage</p>
-                  <p className="text-sm font-medium text-gray-900">{selectedPrescription.dosage}</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{selectedPrescription.dosage}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Prescribed Date</p>
@@ -543,7 +543,7 @@ const Prescriptions = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Status</p>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedPrescription.status)}`}>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedPrescription.status)}`}>
                     {selectedPrescription.status}
                   </span>
                 </div>
@@ -579,14 +579,14 @@ const Prescriptions = () => {
               )}
             </div>
             
-            <div className="flex items-center justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3 mt-6 pt-4 border-t border-gray-200">
               <button
                 onClick={() => setShowPrescriptionModal(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                className="w-full sm:w-auto px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
               >
                 Close
               </button>
-              <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center space-x-2">
+              <button className="w-full sm:w-auto px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center justify-center space-x-2 text-sm">
                 <Printer className="h-4 w-4" />
                 <span>Print</span>
               </button>
@@ -597,15 +597,15 @@ const Prescriptions = () => {
 
       {/* Add Prescription Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Add Prescription</h3>
+              <h3 className="text-base sm:text-lg font-medium text-gray-900">Add Prescription</h3>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 p-1"
               >
-                <X className="h-6 w-6" />
+                <X className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
             </div>
             
@@ -650,7 +650,7 @@ const AddPrescriptionForm = ({ patients, onSubmit, onCancel }) => {
         <select
           value={formData.patientId}
           onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
           required
         >
           <option value="">Select Patient</option>
@@ -662,7 +662,7 @@ const AddPrescriptionForm = ({ patients, onSubmit, onCancel }) => {
         </select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Medication Name *
@@ -671,7 +671,7 @@ const AddPrescriptionForm = ({ patients, onSubmit, onCancel }) => {
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
             placeholder="e.g., Amoxicillin, Ibuprofen"
             required
           />
@@ -685,14 +685,14 @@ const AddPrescriptionForm = ({ patients, onSubmit, onCancel }) => {
             type="text"
             value={formData.dosage}
             onChange={(e) => setFormData({ ...formData, dosage: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
             placeholder="e.g., 500mg, 10ml"
             required
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Frequency
@@ -701,7 +701,7 @@ const AddPrescriptionForm = ({ patients, onSubmit, onCancel }) => {
             type="text"
             value={formData.frequency}
             onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
             placeholder="e.g., Twice daily, Every 8 hours"
           />
         </div>
@@ -714,7 +714,7 @@ const AddPrescriptionForm = ({ patients, onSubmit, onCancel }) => {
             type="date"
             value={formData.endDate}
             onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
           />
         </div>
       </div>
@@ -727,22 +727,22 @@ const AddPrescriptionForm = ({ patients, onSubmit, onCancel }) => {
           value={formData.notes}
           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
           rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-none"
           placeholder="Special instructions, side effects to watch for..."
         />
       </div>
 
-      <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3 pt-4 border-t border-gray-200">
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+          className="w-full sm:w-auto px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 flex items-center space-x-2"
+          className="w-full sm:w-auto px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 flex items-center justify-center space-x-2 text-sm"
         >
           <Pill className="h-4 w-4" />
           <span>Add Prescription</span>

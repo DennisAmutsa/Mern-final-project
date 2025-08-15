@@ -428,28 +428,28 @@ const DoctorDashboard = () => {
           >
             <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 mb-2" />
             <span className="text-xs sm:text-sm font-medium text-gray-900 text-center">View Appointments</span>
-          </button>
+        </button>
           <button 
             className="flex flex-col items-center p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors" 
             onClick={() => navigate('/doctor-dashboard/patients')}
           >
             <Users className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 mb-2" />
             <span className="text-xs sm:text-sm font-medium text-gray-900 text-center">Patient Records</span>
-          </button>
+        </button>
           <button 
             className="flex flex-col items-center p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors" 
             onClick={() => navigate('/doctor-dashboard/emergency')}
           >
             <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 mb-2" />
             <span className="text-xs sm:text-sm font-medium text-gray-900 text-center">Emergency Cases</span>
-          </button>
+        </button>
           <button 
             className="flex flex-col items-center p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors" 
             onClick={() => navigate('/doctor-dashboard/stats')}
           >
             <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 mb-2" />
             <span className="text-xs sm:text-sm font-medium text-gray-900 text-center">Medical Reports</span>
-          </button>
+        </button>
         </div>
       </div>
 
@@ -585,33 +585,33 @@ const DoctorDashboard = () => {
                         <option value="Recovering">Recovering</option>
                       </select>
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            setSelectedPatient(patient);
-                            setShowMedicalRecordModal(true);
-                          }}
+                      <button
+                        onClick={() => {
+                          setSelectedPatient(patient);
+                          setShowMedicalRecordModal(true);
+                        }}
                           className="text-green-600 hover:text-green-800 text-xs sm:text-sm font-medium flex items-center justify-center space-x-1 flex-1"
-                        >
+                      >
                           <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
-                          <span>Add Record</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedPatient(patient);
-                            setShowPrescriptionModal(true);
-                          }}
+                        <span>Add Record</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedPatient(patient);
+                          setShowPrescriptionModal(true);
+                        }}
                           className="text-purple-600 hover:text-purple-800 text-xs sm:text-sm font-medium flex items-center justify-center space-x-1 flex-1"
-                        >
+                      >
                           <Pill className="h-3 w-3 sm:h-4 sm:w-4" />
-                          <span>Prescribe</span>
-                        </button>
+                        <span>Prescribe</span>
+                      </button>
                       </div>
                     </div>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
+                ))}
+              </div>
+            ) : (
             <div className="text-center py-6 sm:py-8">
               <Users className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-sm sm:text-base text-gray-500">No patients assigned</p>
@@ -619,9 +619,9 @@ const DoctorDashboard = () => {
                 {searchTerm || filterStatus !== 'all' ? 'Try adjusting your search or filters' : 'Patients will appear here when assigned'}
               </p>
             </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
 
       {/* Patient Details Modal */}
       {showPatientModal && selectedPatient && (
@@ -665,9 +665,9 @@ const DoctorDashboard = () => {
                     <p className="text-xs sm:text-sm font-medium text-gray-900">
                       {selectedPatient.bloodType || 'Not specified'}
                     </p>
-                  </div>
-                </div>
-              </div>
+          </div>
+                      </div>
+                    </div>
 
               {/* Medical Information */}
               <div>
@@ -767,8 +767,8 @@ const DoctorDashboard = () => {
               >
                 <X className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
-            </div>
-            
+      </div>
+
             <form className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -796,7 +796,7 @@ const DoctorDashboard = () => {
                       <option key={type} value={type}>{type}</option>
                     ))}
                   </select>
-                </div>
+        </div>
               </div>
 
               <div>
@@ -1026,18 +1026,18 @@ const DoctorDashboard = () => {
                 </select>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
-                  <select
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                <select
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    value={careTaskData.priority}
-                    onChange={(e) => setCareTaskData({ ...careTaskData, priority: e.target.value })}
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                  </select>
-                </div>
+                  value={careTaskData.priority}
+                  onChange={(e) => setCareTaskData({ ...careTaskData, priority: e.target.value })}
+                >
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                </select>
+              </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                   <select
@@ -1053,25 +1053,25 @@ const DoctorDashboard = () => {
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
-                  <input
-                    type="date"
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
+                <input
+                  type="date"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    value={careTaskData.dueDate}
-                    onChange={(e) => setCareTaskData({ ...careTaskData, dueDate: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Room</label>
-                  <input
-                    type="text"
+                  value={careTaskData.dueDate}
+                  onChange={(e) => setCareTaskData({ ...careTaskData, dueDate: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Room</label>
+                <input
+                  type="text"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    value={careTaskData.room}
-                    onChange={(e) => setCareTaskData({ ...careTaskData, room: e.target.value })}
-                    placeholder="e.g., Room 101"
-                  />
-                </div>
+                  value={careTaskData.room}
+                  onChange={(e) => setCareTaskData({ ...careTaskData, room: e.target.value })}
+                  placeholder="e.g., Room 101"
+                />
+              </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>

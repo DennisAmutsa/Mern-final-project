@@ -360,73 +360,73 @@ const Emergency = () => {
       <div className="bg-white rounded-lg shadow p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
           <div className="sm:col-span-2 lg:col-span-1">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Search</label>
-            <div className="relative">
+          <label className="block text-xs font-medium text-gray-700 mb-1">Search</label>
+          <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search emergencies..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
+            <input
+              type="text"
+              placeholder="Search emergencies..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
                 className="pl-8 sm:pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
-              />
-            </div>
+            />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
             <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-              <option value="">All</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Scheduled">Scheduled</option>
-              <option value="Confirmed">Confirmed</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
-              <option value="No Show">No Show</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Severity</label>
+            <option value="">All</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Scheduled">Scheduled</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+            <option value="No Show">No Show</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Severity</label>
             <select value={filterSeverity} onChange={e => setFilterSeverity(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-              <option value="">All</option>
-              <option value="Critical">Critical</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Doctor</label>
+            <option value="">All</option>
+            <option value="Critical">Critical</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Doctor</label>
             <select value={filterDoctor} onChange={e => setFilterDoctor(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-              <option value="">All</option>
-              {doctors.map(d => (
-                <option key={d._id} value={d._id}>{d.firstName} {d.lastName}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Patient</label>
+            <option value="">All</option>
+            {doctors.map(d => (
+              <option key={d._id} value={d._id}>{d.firstName} {d.lastName}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Patient</label>
             <select value={filterPatient} onChange={e => setFilterPatient(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-              <option value="">All</option>
-              {patients.map(p => (
-                <option key={p._id} value={p._id}>{p.firstName} {p.lastName}</option>
-              ))}
-            </select>
-          </div>
+            <option value="">All</option>
+            {patients.map(p => (
+              <option key={p._id} value={p._id}>{p.firstName} {p.lastName}</option>
+            ))}
+          </select>
+        </div>
           <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Sort By</label>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Sort By</label>
               <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-                <option value="createdAt">Arrival Time</option>
-                <option value="severity">Severity</option>
-                <option value="status">Status</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Direction</label>
+            <option value="createdAt">Arrival Time</option>
+            <option value="severity">Severity</option>
+            <option value="status">Status</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Direction</label>
               <select value={sortDir} onChange={e => setSortDir(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
                 <option value="desc">Desc</option>
                 <option value="asc">Asc</option>
-              </select>
+          </select>
             </div>
           </div>
         </div>
@@ -581,8 +581,8 @@ const Emergency = () => {
                   <option value="Medium">Medium</option>
                   <option value="Low">Low</option>
                 </select>
-              </div>
-              <div>
+                  </div>
+                  <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Symptoms</label>
                 <input required type="text" value={addForm.symptoms} onChange={e => setAddForm(f => ({ ...f, symptoms: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm" placeholder="e.g. Chest pain, shortness of breath" />
               </div>
@@ -610,7 +610,7 @@ const Emergency = () => {
           <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 w-full max-w-md">
             <h3 className="text-base sm:text-lg font-bold mb-4">Update Emergency Status</h3>
             <form onSubmit={handleUpdateStatus} className="space-y-4">
-              <div>
+                <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select required value={statusForm.status} onChange={e => setStatusForm({ status: e.target.value })} className="w-full border rounded px-3 py-2 text-sm">
                   <option value="">Select Status</option>

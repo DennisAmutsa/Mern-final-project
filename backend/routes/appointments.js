@@ -25,7 +25,7 @@ router.get('/available-slots', async (req, res) => {
 // Get all appointments with pagination and filters
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const { page = 1, limit = 10, date, doctor, patient, status, type } = req.query;
+    const { page = 1, limit = 7, date, doctor, patient, status, type, sort = 'appointmentDate', order = 'desc' } = req.query;
     const skip = (page - 1) * limit;
     
     let query = {};
@@ -74,11 +74,24 @@ router.get('/', authenticateToken, async (req, res) => {
       query.type = type;
     }
     
+    // Build sort object
+    let sortObject = {};
+    if (sort === 'appointmentDate') {
+      sortObject.appointmentDate = order === 'desc' ? -1 : 1;
+      sortObject.appointmentTime = order === 'desc' ? -1 : 1;
+    } else if (sort === 'createdAt') {
+      sortObject.createdAt = order === 'desc' ? -1 : 1;
+    } else {
+      // Default sorting: newest appointments first
+      sortObject.appointmentDate = -1;
+      sortObject.appointmentTime = -1;
+    }
+    
     // Apply pagination for all roles
     let appointmentsQuery = Appointment.find(query)
       .populate('patient', 'firstName lastName patientId email')
       .populate('doctor', 'firstName lastName specialization email')
-      .sort({ appointmentDate: 1, appointmentTime: 1 })
+      .sort(sortObject)
       .skip(skip)
       .limit(parseInt(limit));
     
