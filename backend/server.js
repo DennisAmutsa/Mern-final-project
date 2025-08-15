@@ -130,6 +130,7 @@ app.use('/api/vitals', require('./routes/vitals'));
 app.use('/api/care-tasks', require('./routes/careTasks'));
 app.use('/api/patient-notes', require('./routes/patientNotes'));
 app.use('/api/shift-handover', require('./routes/shiftHandover'));
+app.use('/api/medical-reports', require('./routes/medicalReports'));
 console.log('Routes registered successfully');
 
 // Health check endpoint

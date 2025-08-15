@@ -113,7 +113,7 @@ const Layout = () => {
           { name: 'Medical Records', href: '/doctor-dashboard/medical-records', icon: FileText },
           { name: 'Prescriptions', href: '/doctor-dashboard/prescriptions', icon: Heart },
           { name: 'Care Tasks', href: '/doctor-dashboard/care-tasks', icon: Clipboard },
-          { name: 'Medical Reports', href: '/doctor-dashboard/stats', icon: BarChart3 },
+          { name: 'Medical Reports', href: '/doctor-dashboard/medical-reports', icon: FileText },
         ];
       case 'nurse':
         return [

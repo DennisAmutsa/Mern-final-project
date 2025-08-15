@@ -445,7 +445,7 @@ const DoctorDashboard = () => {
         </button>
           <button 
             className="flex flex-col items-center p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors" 
-            onClick={() => navigate('/doctor-dashboard/stats')}
+            onClick={() => navigate('/doctor-dashboard/medical-reports')}
           >
             <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 mb-2" />
             <span className="text-xs sm:text-sm font-medium text-gray-900 text-center">Medical Reports</span>

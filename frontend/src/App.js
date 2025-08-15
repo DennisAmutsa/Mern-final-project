@@ -37,6 +37,7 @@ import PatientNotes from './pages/PatientNotes';
 import Medications from './pages/Medications';
 import CareTasks from './pages/CareTasks';
 import NurseReports from './pages/NurseReports';
+import MedicalReports from './pages/MedicalReports';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -181,6 +182,7 @@ function AppRoutes() {
         <Route path="medical-records" element={<MedicalRecords />} />
         <Route path="prescriptions" element={<Prescriptions />} />
         <Route path="care-tasks" element={<CareTasks />} />
+        <Route path="medical-reports" element={<MedicalReports />} />
       </Route>
 
       <Route path="/nurse-dashboard" element={
