@@ -249,6 +249,37 @@ router.put('/:id/assign-doctor', async (req, res) => {
   }
 });
 
+// Update patient status
+router.patch('/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+    
+    const validStatuses = ['Active', 'Discharged', 'Under Observation', 'Critical', 'Recovering'];
+    
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status. Must be one of: Active, Discharged, Under Observation, Critical, Recovering' });
+    }
+    
+    const patient = await Patient.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    ).populate('assignedDoctor', 'firstName lastName email');
+    
+    if (!patient) {
+      return res.status(404).json({ error: 'Patient not found' });
+    }
+    
+    res.json({ message: 'Patient status updated successfully', patient });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Delete patient
 router.delete('/:id', async (req, res) => {
   try {

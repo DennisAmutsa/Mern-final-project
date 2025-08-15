@@ -221,7 +221,7 @@ const userSchema = new mongoose.Schema({
   resetPasswordExpires: Date,
   status: {
     type: String,
-    enum: ['Active', 'Inactive', 'Discharged', 'Emergency'],
+    enum: ['Active', 'Inactive', 'Discharged', 'Emergency', 'Under Observation', 'Critical', 'Recovering'],
     default: 'Active'
   },
   // Doctor Schedule fields

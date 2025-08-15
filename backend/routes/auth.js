@@ -1108,4 +1108,37 @@ router.get('/medications/administered', authenticateToken, requireRole(['nurse',
   }
 });
 
+// Update user status (for doctors to update patient status)
+router.patch('/users/:userId/status', authenticateToken, requireRole(['doctor', 'admin']), async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+    
+    const validStatuses = ['Active', 'Discharged', 'Under Observation', 'Critical', 'Recovering'];
+    
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status. Must be one of: Active, Discharged, Under Observation, Critical, Recovering' });
+    }
+    
+    const user = await User.findByIdAndUpdate(
+      req.params.userId,
+      { status },
+      { new: true, runValidators: true }
+    ).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({ message: 'User status updated successfully', user });
+    await logAudit({ req, action: 'USER_STATUS_UPDATE', description: `User ${user.email} status updated to ${status} by ${req.user.email}`, status: 'SUCCESS', details: req.body });
+  } catch (error) {
+    await logAudit({ req, action: 'USER_STATUS_UPDATE', description: `User status update failed`, status: 'FAILED', details: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router; 
