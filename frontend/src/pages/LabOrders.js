@@ -21,11 +21,13 @@ import toast from 'react-hot-toast';
 const LabOrders = () => {
   const [labOrders, setLabOrders] = useState([]);
   const [patients, setPatients] = useState([]);
+  const [labTechnicians, setLabTechnicians] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [newOrder, setNewOrder] = useState({
     patient: '',
+    labTechnician: '',
     tests: [{ testType: '', testName: '', priority: 'Routine' }],
     priority: 'Routine',
     dueDate: '',
@@ -38,12 +40,14 @@ const LabOrders = () => {
   useEffect(() => {
     fetchLabOrders();
     fetchPatients();
+    fetchLabTechnicians();
   }, []);
 
   const fetchLabOrders = async () => {
     try {
       setLoading(true);
       const response = await apiClient.get('/api/lab-orders');
+      console.log('Lab orders response:', response.data);
       setLabOrders(response.data.orders || []);
     } catch (error) {
       console.error('Error fetching lab orders:', error);
@@ -71,6 +75,15 @@ const LabOrders = () => {
     }
   };
 
+  const fetchLabTechnicians = async () => {
+    try {
+      const response = await apiClient.get('/api/users?roles=lab_technician');
+      setLabTechnicians(response.data || []);
+    } catch (error) {
+      console.error('Error fetching lab technicians:', error);
+    }
+  };
+
   const addLabOrder = async (orderData) => {
     try {
       await apiClient.post('/api/lab-orders', orderData);
@@ -78,6 +91,7 @@ const LabOrders = () => {
       setShowAddModal(false);
       setNewOrder({
         patient: '',
+        labTechnician: '',
         tests: [{ testType: '', testName: '', priority: 'Routine' }],
         priority: 'Routine',
         dueDate: '',
@@ -207,9 +221,14 @@ const LabOrders = () => {
                         <User className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400 mr-1 sm:mr-2" />
                         <div className="min-w-0 flex-1">
                           <span className="text-xs font-medium text-gray-900 truncate block">
-                            {order.patient?.firstName} {order.patient?.lastName}
+                            {order.patient?.firstName && order.patient?.lastName 
+                              ? `${order.patient.firstName} ${order.patient.lastName}`
+                              : order.patient?._id?.slice(-4) || 'Unknown Patient'
+                            }
                           </span>
-                          <p className="text-xs text-gray-500 truncate">ID: {order.patient?._id?.slice(-4)}</p>
+                          {order.patient?.firstName && order.patient?.lastName && (
+                            <p className="text-xs text-gray-500 truncate">ID: {order.patient?._id?.slice(-4)}</p>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -241,6 +260,15 @@ const LabOrders = () => {
                         >
                           <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                         </button>
+                        {order.orderStatus === 'Completed' && (
+                          <button
+                            onClick={() => setSelectedOrder(order)}
+                            className="text-green-600 hover:text-green-900 p-1"
+                            title="View Results"
+                          >
+                            <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => deleteLabOrder(order._id)}
                           className="text-red-600 hover:text-red-900 p-1"
@@ -321,6 +349,23 @@ const LabOrders = () => {
                     onChange={(e) => setNewOrder({...newOrder, dueDate: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Lab Technician *</label>
+                  <select
+                    required
+                    value={newOrder.labTechnician}
+                    onChange={(e) => setNewOrder({...newOrder, labTechnician: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select lab technician</option>
+                    {labTechnicians.map((tech) => (
+                      <option key={tech._id} value={tech._id}>
+                        {tech.firstName} {tech.lastName}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 
                 <div>
@@ -472,7 +517,10 @@ const LabOrders = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Patient</label>
                   <p className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-lg">
-                    {selectedOrder.patient?.firstName} {selectedOrder.patient?.lastName}
+                    {selectedOrder.patient?.firstName && selectedOrder.patient?.lastName 
+                      ? `${selectedOrder.patient.firstName} ${selectedOrder.patient.lastName}`
+                      : selectedOrder.patient?._id?.slice(-4) || 'Unknown Patient'
+                    }
                   </p>
                 </div>
                 
@@ -508,6 +556,16 @@ const LabOrders = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Completed Date</label>
                   <p className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-lg">
                     {selectedOrder.completedDate ? new Date(selectedOrder.completedDate).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Assigned Lab Technician</label>
+                  <p className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-lg">
+                    {selectedOrder.labTechnician?.firstName && selectedOrder.labTechnician?.lastName 
+                      ? `${selectedOrder.labTechnician.firstName} ${selectedOrder.labTechnician.lastName}`
+                      : 'Not Assigned'
+                    }
                   </p>
                 </div>
               </div>

@@ -13,6 +13,7 @@ router.get('/', authenticateToken, requireRole(['lab_technician', 'doctor', 'adm
     
     // Role-based filtering
     if (req.user.role === 'lab_technician') {
+      // Lab technicians can only see orders assigned to them
       query.labTechnician = req.user._id;
     } else if (req.user.role === 'doctor') {
       query.doctor = req.user._id;
@@ -40,6 +41,13 @@ router.get('/', authenticateToken, requireRole(['lab_technician', 'doctor', 'adm
       .sort({ requestedDate: -1 })
       .skip(skip)
       .limit(parseInt(limit));
+    
+    console.log('Lab orders with populated data:', orders.map(order => ({
+      id: order._id,
+      patient: order.patient,
+      doctor: order.doctor,
+      labTechnician: order.labTechnician
+    })));
     
     res.json({
       orders,
@@ -79,15 +87,20 @@ router.get('/:id', authenticateToken, requireRole(['lab_technician', 'doctor', '
 // Create new lab order (doctors only)
 router.post('/', authenticateToken, requireRole(['doctor']), async (req, res) => {
   try {
-    const { patient, tests, priority, dueDate, notes, instructions } = req.body;
+    const { patient, labTechnician, tests, priority, dueDate, notes, instructions } = req.body;
     
     if (!patient || !tests || tests.length === 0) {
       return res.status(400).json({ error: 'Patient and tests are required' });
     }
     
+    if (!labTechnician) {
+      return res.status(400).json({ error: 'Lab technician assignment is required' });
+    }
+    
     const newOrder = new LabOrder({
       patient,
       doctor: req.user._id,
+      labTechnician,
       tests,
       priority: priority || 'Routine',
       dueDate,
@@ -105,6 +118,8 @@ router.post('/', authenticateToken, requireRole(['doctor']), async (req, res) =>
     res.status(500).json({ error: 'Failed to create lab order' });
   }
 });
+
+
 
 // Update lab order status (lab technicians only)
 router.patch('/:id/status', authenticateToken, requireRole(['lab_technician']), async (req, res) => {
@@ -163,12 +178,16 @@ router.post('/:id/results', authenticateToken, requireRole(['lab_technician']), 
       }
       return test;
     });
+
+    // Check if all tests are completed
+    const allTestsCompleted = updatedTests.every(test => test.status === 'Completed');
     
     const updatedOrder = await LabOrder.findByIdAndUpdate(
       req.params.id,
       { 
         tests: updatedTests,
-        orderStatus: updatedTests.every(test => test.status === 'Completed') ? 'Completed' : 'In Progress'
+        orderStatus: allTestsCompleted ? 'Completed' : 'In Progress',
+        completedDate: allTestsCompleted ? new Date() : null
       },
       { new: true }
     ).populate('patient', 'firstName lastName')
@@ -204,6 +223,25 @@ router.patch('/:id/tests/:testIndex/results', authenticateToken, requireRole(['l
     
     if (status === 'Completed') {
       updates[`tests.${testIndex}.completedDate`] = new Date();
+    }
+
+    // Get the current order to check if all tests will be completed
+    const currentOrder = await LabOrder.findById(req.params.id);
+    const updatedTests = [...currentOrder.tests];
+    updatedTests[testIndex] = {
+      ...updatedTests[testIndex].toObject(),
+      ...(results && { results }),
+      ...(status && { status }),
+      ...(notes && { notes }),
+      ...(status === 'Completed' && { completedDate: new Date() })
+    };
+
+    const allTestsCompleted = updatedTests.every(test => test.status === 'Completed');
+    if (allTestsCompleted) {
+      updates.orderStatus = 'Completed';
+      updates.completedDate = new Date();
+    } else if (status === 'In Progress') {
+      updates.orderStatus = 'In Progress';
     }
     
     const updatedOrder = await LabOrder.findByIdAndUpdate(

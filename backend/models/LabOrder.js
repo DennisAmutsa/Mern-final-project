@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const labOrderSchema = new mongoose.Schema({
   patient: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Patient',
     required: true
   },
   doctor: {

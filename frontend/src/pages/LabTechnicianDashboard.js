@@ -256,9 +256,10 @@ const LabTechnicianDashboard = () => {
   };
 
   // Lab Order Management Functions
+
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
-      await apiClient.patch(`/api/lab-orders/${orderId}/status`, { status: newStatus });
+      await apiClient.patch(`/api/lab-orders/${orderId}/status`, { orderStatus: newStatus });
       toast.success('Order status updated successfully');
       fetchLabOrders();
       fetchStats();
@@ -268,8 +269,18 @@ const LabTechnicianDashboard = () => {
     }
   };
 
-  const addTestResult = async (orderId, testResults) => {
+  const addTestResult = async (orderId, tests) => {
     try {
+      // Convert tests to the format expected by the API
+      const testResults = tests.map(test => ({
+        results: {
+          findings: test.results?.findings || '',
+          values: test.results?.values || []
+        },
+        status: test.status || 'Pending',
+        notes: test.notes || ''
+      }));
+
       await apiClient.post(`/api/lab-orders/${orderId}/results`, { testResults });
       toast.success('Test results added successfully');
       fetchLabOrders();
@@ -737,6 +748,7 @@ const LabTechnicianDashboard = () => {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tests</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Technician</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Requested Date</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                         </tr>
@@ -748,7 +760,10 @@ const LabTechnicianDashboard = () => {
                               <div className="flex items-center">
                                 <User className="h-4 w-4 text-gray-400 mr-2" />
                                 <span className="text-sm font-medium text-gray-900">
-                                  {order.patient?.firstName} {order.patient?.lastName}
+                                  {order.patient?.firstName && order.patient?.lastName 
+                                    ? `${order.patient.firstName} ${order.patient.lastName}`
+                                    : order.patient?._id || 'Unknown Patient'
+                                  }
                                 </span>
                               </div>
                             </td>
@@ -766,6 +781,11 @@ const LabTechnicianDashboard = () => {
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <span className="text-green-600">
+                                {order.labTechnician?.firstName} {order.labTechnician?.lastName}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {new Date(order.requestedDate).toLocaleDateString()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -777,6 +797,8 @@ const LabTechnicianDashboard = () => {
                                 >
                                   <Eye className="h-4 w-4" />
                                 </button>
+
+
                                 {order.orderStatus === 'Pending' && (
                                   <button
                                     onClick={() => updateOrderStatus(order._id, 'In Progress')}
@@ -2427,6 +2449,184 @@ const LabTechnicianDashboard = () => {
                       </button>
                     </div>
                   </form>
+                </div>
+              </div>
+            )}
+
+            {/* Lab Order Details Modal */}
+            {selectedOrder && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Lab Order Details - {selectedOrder.patient?.firstName} {selectedOrder.patient?.lastName}
+                    </h3>
+                    <button
+                      onClick={() => setSelectedOrder(null)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+
+                  {/* Order Information */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-2">Order Information</h4>
+                      <div className="space-y-2 text-sm">
+                        <p><span className="font-medium">Patient:</span> {selectedOrder.patient?.firstName} {selectedOrder.patient?.lastName}</p>
+                        <p><span className="font-medium">Doctor:</span> {selectedOrder.doctor?.firstName} {selectedOrder.doctor?.lastName}</p>
+                        <p><span className="font-medium">Priority:</span> 
+                          <span className={`ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(selectedOrder.priority)}`}>
+                            {selectedOrder.priority}
+                          </span>
+                        </p>
+                        <p><span className="font-medium">Status:</span> 
+                          <span className={`ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedOrder.orderStatus)}`}>
+                            {selectedOrder.orderStatus}
+                          </span>
+                        </p>
+                        <p><span className="font-medium">Requested Date:</span> {new Date(selectedOrder.requestedDate).toLocaleDateString()}</p>
+                        {selectedOrder.dueDate && (
+                          <p><span className="font-medium">Due Date:</span> {new Date(selectedOrder.dueDate).toLocaleDateString()}</p>
+                        )}
+                        {selectedOrder.instructions && (
+                          <p><span className="font-medium">Instructions:</span> {selectedOrder.instructions}</p>
+                        )}
+                        {selectedOrder.notes && (
+                          <p><span className="font-medium">Notes:</span> {selectedOrder.notes}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-2">Assignment</h4>
+                      <div className="space-y-2 text-sm">
+                        <p><span className="font-medium">Assigned to:</span> {selectedOrder.labTechnician?.firstName} {selectedOrder.labTechnician?.lastName}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tests Section */}
+                  <div className="mb-6">
+                    <h4 className="font-medium text-gray-900 mb-4">Tests</h4>
+                    <div className="space-y-4">
+                      {selectedOrder.tests?.map((test, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <h5 className="font-medium text-gray-900">{test.testName}</h5>
+                              <p className="text-sm text-gray-600">{test.testType}</p>
+                              <p className="text-sm text-gray-600">Priority: 
+                                <span className={`ml-1 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(test.priority)}`}>
+                                  {test.priority}
+                                </span>
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(test.status)}`}>
+                                {test.status}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Test Results Form */}
+                          {selectedOrder.orderStatus === 'In Progress' && (
+                            <div className="border-t pt-3">
+                              <h6 className="font-medium text-gray-900 mb-2">Test Results</h6>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                  <select
+                                    value={test.status || 'Pending'}
+                                    onChange={(e) => {
+                                      const updatedTests = [...selectedOrder.tests];
+                                      updatedTests[index] = { ...test, status: e.target.value };
+                                      setSelectedOrder({ ...selectedOrder, tests: updatedTests });
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="Pending">Pending</option>
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="Completed">Completed</option>
+                                    <option value="Failed">Failed</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                  <input
+                                    type="text"
+                                    value={test.notes || ''}
+                                    onChange={(e) => {
+                                      const updatedTests = [...selectedOrder.tests];
+                                      updatedTests[index] = { ...test, notes: e.target.value };
+                                      setSelectedOrder({ ...selectedOrder, tests: updatedTests });
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter test notes"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Results Values */}
+                              <div className="mt-3">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Results Values</label>
+                                <textarea
+                                  value={test.results?.findings || ''}
+                                  onChange={(e) => {
+                                    const updatedTests = [...selectedOrder.tests];
+                                    const updatedResults = { ...test.results, findings: e.target.value };
+                                    updatedTests[index] = { ...test, results: updatedResults };
+                                    setSelectedOrder({ ...selectedOrder, tests: updatedTests });
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  rows="3"
+                                  placeholder="Enter test results and findings"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Display existing results */}
+                          {test.results && (test.results.findings || test.results.values?.length > 0) && (
+                            <div className="border-t pt-3 mt-3">
+                              <h6 className="font-medium text-gray-900 mb-2">Current Results</h6>
+                              {test.results.findings && (
+                                <p className="text-sm text-gray-700 mb-2">{test.results.findings}</p>
+                              )}
+                              {test.results.values?.map((value, vIndex) => (
+                                <div key={vIndex} className="text-sm text-gray-600">
+                                  <span className="font-medium">{value.parameter}:</span> {value.value} {value.unit}
+                                  {value.isAbnormal && <span className="text-red-600 ml-2">(Abnormal)</span>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-end space-x-3 pt-4 border-t">
+                    <button
+                      onClick={() => setSelectedOrder(null)}
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    >
+                      Close
+                    </button>
+                    {selectedOrder.orderStatus === 'In Progress' && (
+                      <button
+                        onClick={() => {
+                          addTestResult(selectedOrder._id, selectedOrder.tests);
+                          setSelectedOrder(null);
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      >
+                        Save Results
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
