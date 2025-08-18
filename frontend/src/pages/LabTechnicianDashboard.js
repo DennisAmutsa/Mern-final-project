@@ -177,24 +177,51 @@ const LabTechnicianDashboard = () => {
 
   const fetchInventory = async (category = '', page = 1) => {
     try {
-      const params = new URLSearchParams({ 
-        limit: itemsPerPage.toString(),
-        page: page.toString()
-      });
-      if (category) {
-        params.append('category', category);
-      }
-      const response = await apiClient.get(`/api/inventory?${params}`);
-      setInventory(response.data.items || []);
-      
-      // Update pagination info from backend
-      if (response.data.pagination) {
-        setTotalPages(response.data.pagination.totalPages || 1);
-        setTotalItems(response.data.pagination.totalItems || 0);
-        setCurrentPage(response.data.pagination.currentPage || 1);
-      }
+      // Fetch both lab inventory and relevant general inventory
+      const [labResponse, generalResponse] = await Promise.all([
+        apiClient.get(`/api/lab-inventory?${new URLSearchParams({ 
+          limit: itemsPerPage.toString(),
+          page: page.toString(),
+          ...(category && { category })
+        })}`),
+        apiClient.get(`/api/inventory?${new URLSearchParams({ 
+          limit: itemsPerPage.toString(),
+          page: page.toString(),
+          ...(category && { category })
+        })}`)
+      ]);
+
+      const labInventory = labResponse.data.inventory || [];
+      const generalInventory = (generalResponse.data.items || []).filter(item => 
+        // Filter general inventory to show only lab-relevant items
+        ['Test Kits', 'Reagents', 'Consumables', 'Glassware', 'Safety Equipment', 'Media', 'Antibodies', 'Enzymes', 'Standards'].includes(item.category)
+      );
+
+      // Combine and format the inventory
+      const combinedInventory = [
+        ...labInventory.map(item => ({
+          ...item,
+          name: item.itemName || item.name,
+          quantity: item.currentStock || item.quantity,
+          minStock: item.minimumStock || item.minStock,
+          maxStock: item.maximumStock || item.maxStock,
+          barcode: item.catalogNumber || item.barcode,
+          manufacturer: item.supplier || item.manufacturer,
+          type: 'Lab'
+        })),
+        ...generalInventory.map(item => ({
+          ...item,
+          type: 'General'
+        }))
+      ];
+
+      setInventory(combinedInventory);
+      setTotalItems(combinedInventory.length);
+      setTotalPages(Math.ceil(combinedInventory.length / itemsPerPage));
+      setCurrentPage(1);
     } catch (error) {
       console.error('Error fetching inventory:', error);
+      setInventory([]);
     }
   };
 
@@ -310,11 +337,17 @@ const LabTechnicianDashboard = () => {
         return;
       }
       
-      const difference = newStock - currentItem.quantity;
+      const currentQuantity = currentItem.currentStock || currentItem.quantity;
+      const difference = newStock - currentQuantity;
       const operation = difference > 0 ? 'add' : 'subtract';
       const quantity = Math.abs(difference);
       
-      await apiClient.put(`/api/inventory/${currentItem.itemId}/stock`, { 
+      // Use the appropriate endpoint based on item type
+      const endpoint = currentItem.type === 'Lab' 
+        ? `/api/lab-inventory/${itemId}/stock`
+        : `/api/inventory/${currentItem.itemId || itemId}/stock`;
+      
+      await apiClient.put(endpoint, { 
         quantity, 
         operation 
       });
@@ -335,8 +368,16 @@ const LabTechnicianDashboard = () => {
         return;
       }
       
-      await apiClient.post(`/api/inventory/${currentItem.itemId}/restock`, { 
-        quantity: quantity || (currentItem.maxStock - currentItem.quantity),
+      const currentQuantity = currentItem.currentStock || currentItem.quantity;
+      const maxStock = currentItem.maximumStock || currentItem.maxStock;
+      
+      // Use the appropriate endpoint based on item type
+      const endpoint = currentItem.type === 'Lab' 
+        ? `/api/lab-inventory/${itemId}/restock`
+        : `/api/inventory/${currentItem.itemId || itemId}/restock`;
+      
+      await apiClient.post(endpoint, { 
+        quantity: quantity || (maxStock - currentQuantity),
         priority: 'Normal',
         notes: 'Requested by lab technician'
       });
@@ -349,17 +390,24 @@ const LabTechnicianDashboard = () => {
 
   const addNewInventoryItem = async (itemData) => {
     try {
-      // Generate a unique batch number if not provided
-      const batchNumber = itemData.batchNumber || `BATCH${Date.now().toString().slice(-6)}`;
-      const manufacturer = itemData.manufacturer || 'Generic';
-      
+      // Convert to lab inventory format
       const itemToAdd = {
-        ...itemData,
-        batchNumber,
-        manufacturer
+        itemName: itemData.name,
+        category: itemData.category,
+        description: itemData.description,
+        unit: itemData.unit,
+        currentStock: itemData.quantity,
+        minimumStock: itemData.minStock,
+        maximumStock: itemData.maxStock,
+        supplier: itemData.supplier,
+        catalogNumber: itemData.barcode,
+        cost: itemData.cost,
+        expiryDate: itemData.expiryDate,
+        location: itemData.location,
+        notes: itemData.notes
       };
       
-      await apiClient.post('/api/inventory', itemToAdd);
+      await apiClient.post('/api/lab-inventory', itemToAdd);
       toast.success('Inventory item added successfully');
       setShowAddInventoryModal(false);
       setNewInventoryItem({
@@ -387,7 +435,24 @@ const LabTechnicianDashboard = () => {
 
   const editInventoryItem = async (itemData) => {
     try {
-      await apiClient.put(`/api/inventory/${editingInventory.itemId}`, itemData);
+      // Convert to lab inventory format
+      const itemToUpdate = {
+        itemName: itemData.name,
+        category: itemData.category,
+        description: itemData.description,
+        unit: itemData.unit,
+        currentStock: itemData.quantity,
+        minimumStock: itemData.minStock,
+        maximumStock: itemData.maxStock,
+        supplier: itemData.supplier,
+        catalogNumber: itemData.barcode,
+        cost: itemData.cost,
+        expiryDate: itemData.expiryDate,
+        location: itemData.location,
+        notes: itemData.notes
+      };
+      
+      await apiClient.put(`/api/lab-inventory/${editingInventory._id}`, itemToUpdate);
       toast.success('Inventory item updated successfully');
       setShowEditInventoryModal(false);
       setEditingInventory(null);
@@ -407,7 +472,12 @@ const LabTechnicianDashboard = () => {
           return;
         }
         
-        await apiClient.delete(`/api/inventory/${currentItem.itemId}`);
+        // Use the appropriate endpoint based on item type
+        const endpoint = currentItem.type === 'Lab' 
+          ? `/api/lab-inventory/${currentItem._id}`
+          : `/api/inventory/${currentItem.itemId || currentItem._id}`;
+        
+        await apiClient.delete(endpoint);
         toast.success('Inventory item deleted successfully');
         fetchInventory();
       } catch (error) {
@@ -872,14 +942,14 @@ const LabTechnicianDashboard = () => {
                 <div className="bg-white rounded-lg shadow">
                   <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-                      <h3 className="text-lg font-medium text-gray-900">Inventory Management</h3>
+                      <h3 className="text-lg font-medium text-gray-900">Lab Inventory Management</h3>
                       <div className="flex items-center space-x-3">
                         <button
                           onClick={() => setShowAddInventoryModal(true)}
                           className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2 text-sm"
                         >
                         <Plus className="h-4 w-4" />
-                        <span>Add Item</span>
+                        <span>Add Lab Item</span>
                         </button>
                         <button
                           onClick={() => fetchInventory()}
@@ -909,6 +979,7 @@ const LabTechnicianDashboard = () => {
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Current Stock</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Min Stock</th>
@@ -924,27 +995,34 @@ const LabTechnicianDashboard = () => {
                               <div className="flex items-center">
                                 <Package className="h-4 w-4 text-gray-400 mr-2" />
                                 <div>
-                                  <span className="text-sm font-medium text-gray-900">{item.name}</span>
-                                  <p className="text-xs text-gray-500">{item.batchNumber} | {item.manufacturer}</p>
+                                  <span className="text-sm font-medium text-gray-900">{item.itemName || item.name}</span>
+                                  <p className="text-xs text-gray-500">{item.catalogNumber || item.barcode} | {item.supplier || item.manufacturer}</p>
                                 </div>
                               </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                                item.type === 'Lab' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                              }`}>
+                                {item.type || 'General'}
+                              </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {item.category}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               <div className="flex items-center space-x-2">
-                                <span>{item.quantity} {item.unit}</span>
+                                <span>{item.currentStock || item.quantity} {item.unit}</span>
                                 <div className="flex items-center space-x-1">
                                   <button
-                                    onClick={() => updateInventoryStock(item._id, Math.max(0, item.quantity - 1))}
+                                    onClick={() => updateInventoryStock(item._id, Math.max(0, (item.currentStock || item.quantity) - 1))}
                                     className="text-red-600 hover:text-red-900 p-1"
                                     title="Decrease Stock"
                                   >
                                     <MinusCircle className="h-3 w-3" />
                                   </button>
                                   <button
-                                    onClick={() => updateInventoryStock(item._id, item.quantity + 1)}
+                                    onClick={() => updateInventoryStock(item._id, (item.currentStock || item.quantity) + 1)}
                                     className="text-green-600 hover:text-green-900 p-1"
                                     title="Increase Stock"
                                   >
@@ -954,11 +1032,11 @@ const LabTechnicianDashboard = () => {
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {item.minStock} {item.unit}
+                              {item.minimumStock || item.minStock} {item.unit}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.quantity <= item.minStock ? 'Low Stock' : 'Available')}`}>
-                                {item.quantity <= item.minStock ? 'Low Stock' : 'Available'}
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor((item.currentStock || item.quantity) <= (item.minimumStock || item.minStock) ? 'Low Stock' : 'Available')}`}>
+                                {(item.currentStock || item.quantity) <= (item.minimumStock || item.minStock) ? 'Low Stock' : 'Available'}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -990,9 +1068,9 @@ const LabTechnicianDashboard = () => {
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </button>
-                                {item.quantity <= item.minStock && (
+                                {(item.currentStock || item.quantity) <= (item.minimumStock || item.minStock) && (
                                   <button
-                                    onClick={() => requestRestock(item._id, item.maxStock - item.quantity)}
+                                    onClick={() => requestRestock(item._id, (item.maximumStock || item.maxStock) - (item.currentStock || item.quantity))}
                                     className="text-orange-600 hover:text-orange-900 p-1"
                                     title="Request Restock"
                                   >
@@ -1989,7 +2067,7 @@ const LabTechnicianDashboard = () => {
                         <input
                           type="text"
                           required
-                          value={newInventoryItem.name}
+                          value={newInventoryItem.name || ''}
                           onChange={(e) => setNewInventoryItem({...newInventoryItem, name: e.target.value})}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="Enter item name"

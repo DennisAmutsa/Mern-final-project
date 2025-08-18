@@ -55,12 +55,13 @@ const LabOrders = () => {
 
   const fetchPatients = async () => {
     try {
-      // Fetch only patients assigned to the current doctor
-      const response = await apiClient.get(`/api/patients?assignedDoctor=${user._id}`);
+      // Fetch ALL patients (including discharged ones) for lab orders
+      // Doctors should be able to create lab orders for any patient
+      const response = await apiClient.get('/api/patients?limit=100');
       setPatients(response.data.patients || []);
     } catch (error) {
       console.error('Error fetching patients:', error);
-      // Fallback to all patients if the specific endpoint doesn't exist
+      // Fallback to all users with patient role if the patients endpoint doesn't exist
       try {
         const fallbackResponse = await apiClient.get('/api/users?roles=patient');
         setPatients(fallbackResponse.data || []);
@@ -283,6 +284,7 @@ const LabOrders = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Patient *</label>
+                  <p className="text-xs text-gray-500 mb-1">Note: Lab orders can be created for all patients, including discharged ones for follow-up care</p>
                   <select
                     required
                     value={newOrder.patient}
@@ -292,7 +294,7 @@ const LabOrders = () => {
                     <option value="">Select patient</option>
                     {patients.map((patient) => (
                       <option key={patient._id} value={patient._id}>
-                        {patient.firstName} {patient.lastName}
+                        {patient.firstName} {patient.lastName} {patient.status ? `(${patient.status})` : ''}
                       </option>
                     ))}
                   </select>

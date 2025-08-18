@@ -48,81 +48,110 @@ const Inventory = () => {
   });
   const socketRef = useRef(null);
 
-  const fetchInventory = () => {
+  const fetchInventory = async () => {
     setLoading(true);
     const token = localStorage.getItem('token');
-    fetch(`${API_BASE_URL}/api/inventory`, {
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      }
-    })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(data => {
-        // Ensure inventory data is an array and clean any problematic fields
-        const safeInventory = Array.isArray(data) ? data.map(item => ({
-          ...item,
-          name: String(item.name || ''),
-          barcode: String(item.barcode || ''),
-          batchNumber: String(item.batchNumber || ''),
-          manufacturer: String(item.manufacturer || ''),
-          quantity: Number(item.quantity) || 0,
-          category: String(item.category || ''),
-          unit: String(item.unit || ''),
-          supplier: String(item.supplier || ''),
-          location: String(item.location || ''),
-          status: String(item.status || ''),
-          cost: item.cost ? Number(item.cost) : null,
-          expiryDate: item.expiryDate || null
-        })) : [];
-        setInventory(safeInventory);
-      })
-      .catch((error) => {
-        console.error('Error fetching inventory:', error);
-        setInventory([]);
-      })
-      .finally(() => setLoading(false));
+    
+    try {
+      // Fetch both general inventory and lab inventory
+      const [generalRes, labRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/inventory`, {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+        }),
+        fetch(`${API_BASE_URL}/api/lab-inventory`, {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+        })
+      ]);
+
+      const [generalData, labData] = await Promise.all([
+        generalRes.ok ? generalRes.json() : { items: [] },
+        labRes.ok ? labRes.json() : { inventory: [] }
+      ]);
+
+      // Process general inventory
+      const generalInventory = Array.isArray(generalData.items) ? generalData.items.map(item => ({
+        ...item,
+        name: String(item.name || ''),
+        barcode: String(item.barcode || ''),
+        batchNumber: String(item.batchNumber || ''),
+        manufacturer: String(item.manufacturer || ''),
+        quantity: Number(item.quantity) || 0,
+        category: String(item.category || ''),
+        unit: String(item.unit || ''),
+        supplier: String(item.supplier || ''),
+        location: String(item.location || ''),
+        status: String(item.status || ''),
+        cost: item.cost ? Number(item.cost) : null,
+        expiryDate: item.expiryDate || null,
+        type: 'General'
+      })) : [];
+
+      // Process lab inventory
+      const labInventory = Array.isArray(labData.inventory) ? labData.inventory.map(item => ({
+        ...item,
+        name: String(item.itemName || ''),
+        barcode: String(item.catalogNumber || ''),
+        batchNumber: String(item.batchNumber || ''),
+        manufacturer: String(item.manufacturer || ''),
+        quantity: Number(item.currentStock) || 0,
+        category: String(item.category || ''),
+        unit: String(item.unit || ''),
+        supplier: String(item.supplier || ''),
+        location: String(item.location || ''),
+        status: String(item.status || ''),
+        cost: item.cost ? Number(item.cost) : null,
+        expiryDate: item.expiryDate || null,
+        type: 'Lab'
+      })) : [];
+
+      // Combine both inventories
+      const combinedInventory = [...generalInventory, ...labInventory];
+      setInventory(combinedInventory);
+    } catch (error) {
+      console.error('Error fetching inventory:', error);
+      setInventory([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchStats = () => {
-    const token = localStorage.getItem('token');
-    fetch(`${API_BASE_URL}/api/inventory/stats/overview`, {
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
+    // Calculate stats from the combined inventory data
+    const totalItems = inventory.length;
+    const lowStockCount = inventory.filter(item => 
+      item.status === 'Low Stock' || 
+      (item.quantity && item.quantity < 10)
+    ).length;
+    const outOfStockCount = inventory.filter(item => 
+      item.status === 'Out of Stock' || 
+      (item.quantity && item.quantity === 0)
+    ).length;
+    const totalValue = inventory.reduce((sum, item) => {
+      return sum + (item.cost ? Number(item.cost) * Number(item.quantity || 0) : 0);
+    }, 0);
+    
+    // Calculate category stats
+    const categoryStats = {};
+    inventory.forEach(item => {
+      if (item.category) {
+        categoryStats[item.category] = (categoryStats[item.category] || 0) + 1;
       }
-    })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(data => {
-        // Ensure all stats are properly formatted
-        const safeStats = {
-          totalItems: typeof data.totalItems === 'number' ? data.totalItems : 0,
-          lowStockCount: typeof data.lowStockCount === 'number' ? data.lowStockCount : 0,
-          outOfStockCount: typeof data.outOfStockCount === 'number' ? data.outOfStockCount : 0,
-          totalValue: typeof data.totalValue === 'number'
-            ? data.totalValue
-            : (typeof data.totalValue === 'string' ? parseFloat(data.totalValue) : 0),
-          categoryStats: typeof data.categoryStats === 'object' && data.categoryStats !== null ? data.categoryStats : {}
-        };
-        setStats(safeStats);
-      })
-      .catch((error) => {
-        console.error('Error fetching inventory stats:', error);
-        setStats({ totalItems: 0, lowStockCount: 0, outOfStockCount: 0, totalValue: 0, categoryStats: {} });
-      });
+    });
+
+    setStats({
+      totalItems,
+      lowStockCount,
+      outOfStockCount,
+      totalValue,
+      categoryStats
+    });
   };
 
   useEffect(() => {
     fetchInventory();
-    fetchStats();
+    // fetchStats will be called after fetchInventory completes
+    // since it depends on the inventory data
+    
     let socket;
     try {
       import('socket.io-client').then(({ default: io }) => {
@@ -144,6 +173,11 @@ const Inventory = () => {
       }
     };
   }, []);
+
+  // Update stats when inventory changes
+  useEffect(() => {
+    fetchStats();
+  }, [inventory]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -188,6 +222,7 @@ const Inventory = () => {
     const q = search.toLowerCase();
     return (
       item.name?.toLowerCase().includes(q) ||
+      item.type?.toLowerCase().includes(q) ||
       item.barcode?.toLowerCase().includes(q) ||
       item.category?.toLowerCase().includes(q) ||
       item.supplier?.toLowerCase().includes(q) ||
@@ -234,7 +269,7 @@ const Inventory = () => {
       <div className="min-h-screen bg-gray-50 pb-10">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <h1 className="text-3xl font-extrabold text-gray-800 mb-2">Inventory</h1>
-          <p className="text-gray-500 mb-6">Manage and track all hospital inventory items here.</p>
+          <p className="text-gray-500 mb-6">Manage and track all hospital inventory items including general and lab inventory.</p>
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-blue-100 p-4 rounded-lg text-center">
@@ -282,6 +317,7 @@ const Inventory = () => {
                 <thead className="bg-gray-100 sticky top-0 z-10">
                   <tr>
                     <th className="px-4 py-3 font-bold text-left border-b text-base">Name</th>
+                    <th className="px-4 py-3 font-bold text-left border-b text-base">Type</th>
                     <th className="px-4 py-3 font-bold text-left border-b text-base">Barcode</th>
                     <th className="px-4 py-3 font-bold text-left border-b text-base">Batch</th>
                     <th className="px-4 py-3 font-bold text-left border-b text-base">Manufacturer</th>
@@ -298,7 +334,7 @@ const Inventory = () => {
                 <tbody>
                   {filteredInventory.length === 0 ? (
                     <tr>
-                      <td colSpan="12" className="text-center text-gray-500 py-8">No inventory items found.</td>
+                      <td colSpan="13" className="text-center text-gray-500 py-8">No inventory items found.</td>
                     </tr>
                   ) : (
                     filteredInventory.map((item, idx) => (
@@ -310,6 +346,13 @@ const Inventory = () => {
                         }
                       >
                         <td className="px-4 py-3 align-top whitespace-pre-line font-semibold text-gray-900 text-base">{item.name || '-'}</td>
+                        <td className="px-4 py-3 align-top">
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
+                            item.type === 'Lab' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {item.type || 'General'}
+                          </span>
+                        </td>
                         <td className="px-4 py-3 align-top text-gray-700 font-mono text-sm">{item.barcode || '-'}</td>
                         <td className="px-4 py-3 align-top text-gray-700">{item.batchNumber || '-'}</td>
                         <td className="px-4 py-3 align-top text-gray-700">{item.manufacturer || '-'}</td>
