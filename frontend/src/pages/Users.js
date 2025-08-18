@@ -42,7 +42,8 @@ const Users = () => {
     { value: 'doctor', label: 'Doctor' },
     { value: 'nurse', label: 'Nurse' },
     { value: 'receptionist', label: 'Receptionist' },
-    { value: 'pharmacist', label: 'Pharmacist' }
+    { value: 'pharmacist', label: 'Pharmacist' },
+    { value: 'lab_technician', label: 'Lab Technician' }
   ];
 
   const departments = [
@@ -181,6 +182,7 @@ const Users = () => {
       case 'nurse': return 'bg-green-100 text-green-800';
       case 'receptionist': return 'bg-yellow-100 text-yellow-800';
       case 'pharmacist': return 'bg-purple-100 text-purple-800';
+      case 'lab_technician': return 'bg-teal-100 text-teal-800';
       case 'pending': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }

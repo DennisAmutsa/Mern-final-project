@@ -143,6 +143,8 @@ export const AuthProvider = ({ children }) => {
         return '/receptionist-dashboard';
       case 'pharmacist':
         return '/pharmacist-dashboard';
+      case 'lab_technician':
+        return '/lab-technician-dashboard';
       case 'user':
       case 'patient':
       case 'staff':

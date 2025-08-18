@@ -2,11 +2,12 @@ const express = require('express');
 const router = express.Router();
 const Inventory = require('../models/Inventory');
 
-// Get all inventory items
+// Get all inventory items with pagination
 router.get('/', async (req, res) => {
   try {
-    const { category, status, search } = req.query;
+    const { category, status, search, page = 1, limit = 10 } = req.query;
     let query = {};
+    
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -18,8 +19,30 @@ router.get('/', async (req, res) => {
     }
     if (category) query.category = category;
     if (status) query.status = status;
-    const items = await Inventory.find(query);
-    res.json(items);
+    
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+    
+    const totalItems = await Inventory.countDocuments(query);
+    const items = await Inventory.find(query)
+      .skip(skip)
+      .limit(limitNum)
+      .sort({ createdAt: -1 });
+    
+    const totalPages = Math.ceil(totalItems / limitNum);
+    
+    res.json({
+      items,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalItems,
+        itemsPerPage: limitNum,
+        hasNext: pageNum < totalPages,
+        hasPrev: pageNum > 1
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -184,12 +207,44 @@ router.put('/:id/stock', async (req, res) => {
       item.status = 'Available';
     }
     await item.save();
+    if (global.io) global.io.emit('inventory-updated');
     res.json({
       message: 'Stock updated successfully',
       item
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+// Request restock
+router.post('/:id/restock', async (req, res) => {
+  try {
+    const { quantity, priority, notes } = req.body;
+    const item = await Inventory.findOne({ itemId: req.params.id });
+    if (!item) return res.status(404).json({ error: 'Inventory item not found' });
+    
+    // Create restock request
+    const restockRequest = {
+      itemId: item.itemId,
+      itemName: item.name,
+      requestedQuantity: quantity || (item.maxStock - item.quantity),
+      priority: priority || 'Normal',
+      notes: notes || '',
+      requestedDate: new Date(),
+      status: 'Pending'
+    };
+    
+    // For now, we'll just log the restock request
+    // In a real system, you might want to create a separate RestockRequest model
+    console.log('Restock request:', restockRequest);
+    
+    res.json({
+      message: 'Restock request submitted successfully',
+      restockRequest
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

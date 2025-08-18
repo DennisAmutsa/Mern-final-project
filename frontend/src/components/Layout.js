@@ -27,7 +27,10 @@ import {
   Database,
   Activity,
   Clipboard,
-  Clock
+  Clock,
+  TestTube,
+  Microscope,
+  MessageSquare
 } from 'lucide-react';
 
 const adminGroups = [
@@ -100,15 +103,19 @@ const Layout = () => {
           { name: 'Doctor Schedules', href: '/admin-dashboard/doctor-schedules', icon: Calendar },
           { name: 'Appointments', href: '/admin-dashboard/appointments', icon: Calendar },
           { name: 'Emergency', href: '/admin-dashboard/emergency', icon: AlertTriangle },
-          { name: 'Care Tasks', href: '/admin-dashboard/care-tasks', icon: Clipboard },
-          { name: 'Inventory', href: '/admin-dashboard/inventory', icon: Package },
-          { name: 'Statistics & Analytics', href: '/admin-dashboard/stats', icon: BarChart3 },
+                        { name: 'Care Tasks', href: '/admin-dashboard/care-tasks', icon: Clipboard },
+              { name: 'Inventory', href: '/admin-dashboard/inventory', icon: Package },
+              { name: 'Equipment', href: '/admin-dashboard/equipment', icon: Microscope },
+              { name: 'Schedule Requests', href: '/admin-dashboard/schedule-requests', icon: MessageSquare },
+              { name: 'Statistics & Analytics', href: '/admin-dashboard/stats', icon: BarChart3 },
         ];
       case 'doctor':
         return [
           ...baseNavigation,
           { name: 'Patients', href: '/doctor-dashboard/patients', icon: Users },
           { name: 'Appointments', href: '/doctor-dashboard/appointments', icon: Calendar },
+          { name: 'Schedule', href: '/doctor-dashboard/schedule', icon: Clock },
+          { name: 'Lab Orders', href: '/doctor-dashboard/lab-orders', icon: TestTube },
           { name: 'Emergency', href: '/doctor-dashboard/emergency', icon: AlertTriangle },
           { name: 'Medical Records', href: '/doctor-dashboard/medical-records', icon: FileText },
           { name: 'Prescriptions', href: '/doctor-dashboard/prescriptions', icon: Heart },
@@ -136,6 +143,15 @@ const Layout = () => {
           { name: 'Appointments', href: '/receptionist-dashboard/appointments', icon: Calendar },
           { name: 'Doctors', href: '/receptionist-dashboard/doctors', icon: UserCheck },
           { name: 'Emergency', href: '/receptionist-dashboard/emergency', icon: AlertTriangle },
+        ];
+      case 'lab_technician':
+        return [
+          ...baseNavigation,
+          { name: 'Lab Orders', href: '/lab-technician-dashboard/lab-orders', icon: TestTube },
+          { name: 'Equipment', href: '/lab-technician-dashboard/equipment', icon: Microscope },
+          { name: 'Inventory', href: '/lab-technician-dashboard/inventory', icon: Package },
+          { name: 'Reports', href: '/lab-technician-dashboard/reports', icon: FileText },
+          { name: 'Settings', href: '/lab-technician-dashboard/settings', icon: Settings },
         ];
       case 'user':
       case 'patient':

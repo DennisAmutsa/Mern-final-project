@@ -38,6 +38,10 @@ import Medications from './pages/Medications';
 import CareTasks from './pages/CareTasks';
 import NurseReports from './pages/NurseReports';
 import MedicalReports from './pages/MedicalReports';
+import LabTechnicianDashboard from './pages/LabTechnicianDashboard';
+import Equipment from './pages/Equipment';
+import LabOrders from './pages/LabOrders';
+import ScheduleRequests from './pages/ScheduleRequests';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -148,6 +152,8 @@ function AppRoutes() {
         <Route path="appointments" element={<Appointments />} />
         <Route path="emergency" element={<Emergency />} />
         <Route path="inventory" element={<Inventory />} />
+        <Route path="equipment" element={<Equipment />} />
+        <Route path="schedule-requests" element={<ScheduleRequests />} />
         <Route path="stats" element={<Stats />} />
         <Route path="users" element={<Users />} />
         <Route path="users/add" element={<Users />} />
@@ -177,6 +183,8 @@ function AppRoutes() {
         <Route index element={<DoctorDashboard />} />
         <Route path="patients" element={<Patients />} />
         <Route path="appointments" element={<Appointments />} />
+        <Route path="schedule" element={<DoctorSchedule />} />
+        <Route path="lab-orders" element={<LabOrders />} />
         <Route path="emergency" element={<Emergency />} />
         <Route path="stats" element={<Stats />} />
         <Route path="medical-records" element={<MedicalRecords />} />
@@ -218,6 +226,21 @@ function AppRoutes() {
         <Route path="doctors" element={<Doctors />} />
         <Route path="doctor-schedule" element={<DoctorSchedule />} />
         <Route path="emergency" element={<Emergency />} />
+      </Route>
+
+      <Route path="/lab-technician-dashboard" element={
+        <ProtectedRoute>
+          <RoleBasedRoute allowedRoles={['lab_technician']}>
+            <Layout />
+          </RoleBasedRoute>
+        </ProtectedRoute>
+      }>
+        <Route index element={<LabTechnicianDashboard />} />
+        <Route path="lab-orders" element={<LabTechnicianDashboard />} />
+        <Route path="equipment" element={<LabTechnicianDashboard />} />
+        <Route path="inventory" element={<LabTechnicianDashboard />} />
+        <Route path="reports" element={<LabTechnicianDashboard />} />
+        <Route path="settings" element={<LabTechnicianDashboard />} />
       </Route>
 
       {/* Catch all route */}

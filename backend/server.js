@@ -131,6 +131,12 @@ app.use('/api/care-tasks', require('./routes/careTasks'));
 app.use('/api/patient-notes', require('./routes/patientNotes'));
 app.use('/api/shift-handover', require('./routes/shiftHandover'));
 app.use('/api/medical-reports', require('./routes/medicalReports'));
+// Lab Technician Routes
+app.use('/api/lab-orders', require('./routes/labOrders'));
+app.use('/api/lab-equipment', require('./routes/labEquipment'));
+app.use('/api/lab-inventory', require('./routes/labInventory'));
+app.use('/api/doctor-schedule', require('./routes/doctorSchedule'));
+app.use('/api/schedule-requests', require('./routes/scheduleRequests'));
 console.log('Routes registered successfully');
 
 // Health check endpoint
