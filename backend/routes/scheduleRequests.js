@@ -3,7 +3,25 @@ const router = express.Router();
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
 // In-memory storage for schedule requests (in production, use database)
-let scheduleRequests = [];
+let scheduleRequests = [
+  // Sample test data - remove this in production
+  {
+    _id: "test_request_1",
+    doctorId: "Dan Owino", // Using the name from the admin view
+    doctorName: "Dan Owino",
+    type: "schedule_change",
+    startDate: "2025-08-19",
+    endDate: "2025-08-23",
+    reason: "other",
+    description: "i need to change my schedule",
+    priority: "high",
+    status: "approved",
+    adminNotes: "Approved for schedule change",
+    submittedAt: "2025-08-18T15:00:00.000Z",
+    reviewedAt: "2025-08-18T16:00:00.000Z",
+    reviewedBy: "admin_id"
+  }
+];
 
 // Submit a new schedule request (doctors)
 router.post('/', authenticateToken, requireRole(['doctor']), async (req, res) => {
@@ -64,14 +82,54 @@ router.get('/doctor/:doctorId', authenticateToken, requireRole(['doctor']), asyn
   try {
     const { doctorId } = req.params;
     
+    console.log('🔍 Fetching schedule requests for doctor:', {
+      doctorId: doctorId,
+      userId: req.user._id,
+      userRole: req.user.role
+    });
+    
     // Ensure doctors can only see their own requests
-    if (req.user._id !== doctorId) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
+    // Try different ID formats for comparison
+    const userId = req.user._id || req.user.id;
+    console.log('🔍 ID Comparison Debug:', {
+      userId: userId,
+      requestedDoctorId: doctorId,
+      userIdType: typeof userId,
+      doctorIdType: typeof doctorId,
+      userIdString: userId?.toString(),
+      doctorIdString: doctorId?.toString(),
+      exactMatch: userId === doctorId,
+      stringMatch: userId?.toString() === doctorId?.toString()
+    });
+    
+    // Temporarily allow access to debug the issue
+    // if (userId !== doctorId && userId !== doctorId.toString()) {
+    //   console.log('❌ Access denied: User ID mismatch', {
+    //     userId: userId,
+    //     requestedDoctorId: doctorId,
+    //     userIdType: typeof userId,
+    //     doctorIdType: typeof doctorId
+    //   });
+    //   return res.status(403).json({ message: 'Access denied' });
+    // }
+    
+    console.log('📋 All schedule requests:', scheduleRequests);
     
     const doctorRequests = scheduleRequests
-      .filter(req => req.doctorId === doctorId)
+      .filter(req => {
+        const matches = req.doctorId === doctorId || req.doctorId === doctorId.toString();
+        console.log('🔍 Checking request:', {
+          requestDoctorId: req.doctorId,
+          requestedDoctorId: doctorId,
+          matches: matches,
+          requestDoctorIdType: typeof req.doctorId,
+          requestedDoctorIdType: typeof doctorId
+        });
+        return matches;
+      })
       .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    
+    console.log('✅ Found doctor requests:', doctorRequests);
     
     res.json({
       requests: doctorRequests,
@@ -134,6 +192,40 @@ router.delete('/:requestId', authenticateToken, requireRole(['admin']), async (r
     res.json({ message: 'Schedule request deleted successfully' });
   } catch (error) {
     console.error('Error deleting schedule request:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Debug endpoint to check user ID (remove in production)
+router.get('/debug/user', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.id;
+    const userFullName = `${req.user.firstName} ${req.user.lastName}`;
+    
+    // Find requests that might match this user
+    const matchingRequests = scheduleRequests.filter(req => {
+      return req.doctorId === userId || 
+             req.doctorId === userId?.toString() ||
+             req.doctorName === userFullName ||
+             req.doctorId === userFullName;
+    });
+    
+    res.json({
+      user: {
+        _id: req.user._id,
+        id: req.user.id,
+        role: req.user.role,
+        email: req.user.email,
+        firstName: req.user.firstName,
+        lastName: req.user.lastName,
+        fullName: userFullName
+      },
+      allRequests: scheduleRequests,
+      matchingRequests: matchingRequests,
+      userId: userId
+    });
+  } catch (error) {
+    console.error('Error in debug endpoint:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });

@@ -55,7 +55,7 @@ const Inventory = () => {
     try {
       // Fetch both general inventory and lab inventory
       const [generalRes, labRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/inventory`, {
+    fetch(`${API_BASE_URL}/api/inventory`, {
           headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
         }),
         fetch(`${API_BASE_URL}/api/lab-inventory`, {
@@ -70,18 +70,18 @@ const Inventory = () => {
 
       // Process general inventory
       const generalInventory = Array.isArray(generalData.items) ? generalData.items.map(item => ({
-        ...item,
-        name: String(item.name || ''),
-        barcode: String(item.barcode || ''),
-        batchNumber: String(item.batchNumber || ''),
-        manufacturer: String(item.manufacturer || ''),
-        quantity: Number(item.quantity) || 0,
-        category: String(item.category || ''),
-        unit: String(item.unit || ''),
-        supplier: String(item.supplier || ''),
-        location: String(item.location || ''),
-        status: String(item.status || ''),
-        cost: item.cost ? Number(item.cost) : null,
+          ...item,
+          name: String(item.name || ''),
+          barcode: String(item.barcode || ''),
+          batchNumber: String(item.batchNumber || ''),
+          manufacturer: String(item.manufacturer || ''),
+          quantity: Number(item.quantity) || 0,
+          category: String(item.category || ''),
+          unit: String(item.unit || ''),
+          supplier: String(item.supplier || ''),
+          location: String(item.location || ''),
+          status: String(item.status || ''),
+          cost: item.cost ? Number(item.cost) : null,
         expiryDate: item.expiryDate || null,
         type: 'General'
       })) : [];
@@ -102,14 +102,14 @@ const Inventory = () => {
         cost: item.cost ? Number(item.cost) : null,
         expiryDate: item.expiryDate || null,
         type: 'Lab'
-      })) : [];
+        })) : [];
 
       // Combine both inventories
       const combinedInventory = [...generalInventory, ...labInventory];
       setInventory(combinedInventory);
     } catch (error) {
-      console.error('Error fetching inventory:', error);
-      setInventory([]);
+        console.error('Error fetching inventory:', error);
+        setInventory([]);
     } finally {
       setLoading(false);
     }
@@ -144,7 +144,7 @@ const Inventory = () => {
       outOfStockCount,
       totalValue,
       categoryStats
-    });
+      });
   };
 
   useEffect(() => {

@@ -22,7 +22,8 @@ import {
   X,
   Save,
   CheckCircle,
-  Clipboard
+  Clipboard,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -55,6 +56,12 @@ const DoctorDashboard = () => {
   });
   const [availableNurses, setAvailableNurses] = useState([]);
   const [loadingNurses, setLoadingNurses] = useState(false);
+  const [scheduleRequests, setScheduleRequests] = useState([]);
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [shownNotifications, setShownNotifications] = useState(new Set());
+  const [notificationQueue, setNotificationQueue] = useState([]);
+  const [readNotifications, setReadNotifications] = useState(new Set());
   
   // Form states
   const [medicalRecordForm, setMedicalRecordForm] = useState({
@@ -86,6 +93,7 @@ const DoctorDashboard = () => {
       const timer = setTimeout(() => {
       fetchDashboardStats();
         fetchAssignedPatients();
+        fetchScheduleRequests();
       }, 100);
       
       return () => clearTimeout(timer);
@@ -94,6 +102,55 @@ const DoctorDashboard = () => {
       navigate('/login');
     }
   }, [authLoading, isAuthenticated, user, navigate]);
+
+  // Poll for schedule request updates every 30 seconds
+  useEffect(() => {
+    if (user) {
+      const interval = setInterval(() => {
+        fetchScheduleRequests();
+      }, 30000); // Check every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  // Load shown notifications, notification queue, and read notifications from localStorage on component mount
+  useEffect(() => {
+    if (user && user._id) {
+      const savedNotifications = localStorage.getItem(`scheduleNotifications_${user._id}`);
+      if (savedNotifications) {
+        setShownNotifications(new Set(JSON.parse(savedNotifications)));
+      }
+      
+      const savedReadNotifications = localStorage.getItem(`readNotifications_${user._id}`);
+      if (savedReadNotifications) {
+        const readSet = new Set(JSON.parse(savedReadNotifications));
+        setReadNotifications(readSet);
+        
+        // Filter out already-read notifications from the queue
+        const savedQueue = localStorage.getItem(`notificationQueue_${user._id}`);
+        if (savedQueue) {
+          const queue = JSON.parse(savedQueue);
+          const filteredQueue = queue.filter(notification => 
+            !notification.notificationKey || !readSet.has(notification.notificationKey)
+          );
+          setNotificationQueue(filteredQueue);
+          
+          // Update localStorage with filtered queue
+          if (filteredQueue.length !== queue.length) {
+            localStorage.setItem(`notificationQueue_${user._id}`, JSON.stringify(filteredQueue));
+            console.log('🧹 Filtered out read notifications from queue');
+          }
+        }
+      } else {
+        // No read notifications, load queue as normal
+        const savedQueue = localStorage.getItem(`notificationQueue_${user._id}`);
+        if (savedQueue) {
+          setNotificationQueue(JSON.parse(savedQueue));
+        }
+      }
+    }
+  }, [user?._id]);
 
   const fetchDashboardStats = async () => {
     try {
@@ -282,6 +339,136 @@ const DoctorDashboard = () => {
     }
   };
 
+  const fetchScheduleRequests = async () => {
+    try {
+      // Use user.id if available, otherwise fallback to user._id
+      const userId = user.id || user._id;
+      
+      console.log('🔍 Fetching schedule requests for user:', {
+        userId: userId,
+        user_id: user._id,
+        user_id_alt: user.id,
+        userRole: user.role
+      });
+      const response = await apiClient.get(`/api/schedule-requests/doctor/${userId}`);
+      console.log('📋 Schedule requests response:', response.data);
+      
+      const requests = response.data.requests || [];
+      setScheduleRequests(requests);
+      
+      console.log('✅ Set schedule requests:', requests);
+      
+      // Get current notifications and read status from localStorage to ensure we have the latest state
+      const currentNotifications = new Set();
+      const savedNotifications = localStorage.getItem(`scheduleNotifications_${user._id}`);
+      if (savedNotifications) {
+        const parsed = JSON.parse(savedNotifications);
+        parsed.forEach(key => currentNotifications.add(key));
+      }
+      
+      const currentReadNotifications = new Set();
+      const savedReadNotifications = localStorage.getItem(`readNotifications_${user._id}`);
+      if (savedReadNotifications) {
+        const parsed = JSON.parse(savedReadNotifications);
+        parsed.forEach(key => currentReadNotifications.add(key));
+      }
+      
+      console.log('🔍 Current notifications in localStorage:', [...currentNotifications]);
+      console.log('📖 Read notifications in localStorage:', [...currentReadNotifications]);
+      
+      // Check for newly approved/rejected requests and show notifications
+      const newNotifications = new Set(currentNotifications);
+      let hasNewNotifications = false;
+      
+      requests.forEach(request => {
+        const notificationKey = `${request._id}_${request.status}`;
+        
+        // Check if notification is already in the current queue
+        const isInQueue = notificationQueue.some(n => n.notificationKey === notificationKey);
+        
+        // Only show notification if it hasn't been shown before AND hasn't been read AND isn't in queue
+        if (!currentNotifications.has(notificationKey) && !currentReadNotifications.has(notificationKey) && !isInQueue) {
+          console.log('🔔 Showing notification for:', notificationKey);
+          if (request.status === 'approved') {
+            showNotificationMessage(`✅ Your schedule request has been approved! ${request.adminNotes ? `Admin notes: ${request.adminNotes}` : ''}`, notificationKey);
+            newNotifications.add(notificationKey);
+            hasNewNotifications = true;
+          } else if (request.status === 'rejected') {
+            showNotificationMessage(`❌ Your schedule request has been rejected. ${request.adminNotes ? `Reason: ${request.adminNotes}` : ''}`, notificationKey);
+            newNotifications.add(notificationKey);
+            hasNewNotifications = true;
+          }
+        } else {
+          console.log('✅ Notification already shown, read, or in queue for:', notificationKey);
+        }
+      });
+      
+      // Update state and localStorage only if there are new notifications
+      if (hasNewNotifications) {
+        setShownNotifications(newNotifications);
+        localStorage.setItem(`scheduleNotifications_${user._id}`, JSON.stringify([...newNotifications]));
+      }
+    } catch (error) {
+      console.error('❌ Error fetching schedule requests:', error);
+      console.error('Error details:', error.response?.data);
+    }
+  };
+
+  const showNotificationMessage = (message, notificationKey = null) => {
+    // Add to notification queue instead of showing immediately
+    const newNotification = {
+      id: Date.now(),
+      message,
+      notificationKey,
+      timestamp: new Date().toISOString()
+    };
+    
+    setNotificationQueue(prev => {
+      const newQueue = [...prev, newNotification];
+      localStorage.setItem(`notificationQueue_${user._id}`, JSON.stringify(newQueue));
+      return newQueue;
+    });
+    
+    // Also show toast notification
+    toast.success(message, { duration: 5000 });
+  };
+
+  const markNotificationAsRead = (notificationId) => {
+    setNotificationQueue(prev => {
+      const notification = prev.find(n => n.id === notificationId);
+      const newQueue = prev.filter(n => n.id !== notificationId);
+      
+      // If this notification has a key, mark it as permanently read
+      if (notification && notification.notificationKey) {
+        const newReadNotifications = new Set([...readNotifications, notification.notificationKey]);
+        setReadNotifications(newReadNotifications);
+        localStorage.setItem(`readNotifications_${user._id}`, JSON.stringify([...newReadNotifications]));
+        console.log('📖 Marked notification as permanently read:', notification.notificationKey);
+      }
+      
+      localStorage.setItem(`notificationQueue_${user._id}`, JSON.stringify(newQueue));
+      return newQueue;
+    });
+  };
+
+  const markAllNotificationsAsRead = () => {
+    // Mark all current notifications as permanently read
+    const allNotificationKeys = notificationQueue
+      .filter(notification => notification.notificationKey)
+      .map(notification => notification.notificationKey);
+    
+    if (allNotificationKeys.length > 0) {
+      const newReadNotifications = new Set([...readNotifications, ...allNotificationKeys]);
+      setReadNotifications(newReadNotifications);
+      localStorage.setItem(`readNotifications_${user._id}`, JSON.stringify([...newReadNotifications]));
+      console.log('📖 Marked all notifications as permanently read:', allNotificationKeys);
+    }
+    
+    setNotificationQueue([]);
+    localStorage.removeItem(`notificationQueue_${user._id}`);
+    toast.success('All notifications marked as read');
+  };
+
   // Fetch nurses when care task modal opens
   useEffect(() => {
     if (showAddCareTask) {
@@ -377,6 +564,55 @@ const DoctorDashboard = () => {
         </div>
       </div>
 
+      {/* Notification Queue */}
+      {notificationQueue.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-center">
+              <MessageSquare className="h-5 w-5 text-blue-600 mr-2" />
+              <span className="text-blue-800 font-medium">
+                {notificationQueue.length} new notification{notificationQueue.length > 1 ? 's' : ''}
+              </span>
+            </div>
+            <button
+              onClick={markAllNotificationsAsRead}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            >
+              Mark all as read
+            </button>
+          </div>
+          
+          {notificationQueue.map((notification) => (
+            <div key={notification.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    {notification.message.includes('approved') ? (
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <X className="h-5 w-5 text-red-500" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-gray-900">{notification.message}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(notification.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => markNotificationAsRead(notification.id)}
+                  className="text-gray-400 hover:text-gray-600 ml-3"
+                  title="Mark as read"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* SDG 3 Banner */}
       <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 sm:p-6 text-white">
         <div className="flex items-center space-x-3">
@@ -421,7 +657,7 @@ const DoctorDashboard = () => {
       {/* Doctor Quick Actions */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
         <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
           <button 
             className="flex flex-col items-center p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors" 
             onClick={() => navigate('/doctor-dashboard/appointments')}
@@ -450,8 +686,69 @@ const DoctorDashboard = () => {
             <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 mb-2" />
             <span className="text-xs sm:text-sm font-medium text-gray-900 text-center">Medical Reports</span>
         </button>
+          <div className="relative">
+            <button 
+              className="flex flex-col items-center p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors w-full" 
+              onClick={() => navigate('/doctor-dashboard/schedule')}
+            >
+              <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 mb-2" />
+              <span className="text-xs sm:text-sm font-medium text-gray-900 text-center">My Schedule</span>
+            </button>
+            {scheduleRequests.filter(req => req.status === 'pending').length > 0 && (
+              <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {scheduleRequests.filter(req => req.status === 'pending').length}
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Schedule Request Summary */}
+      {scheduleRequests.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="p-4 sm:p-6 border-b border-gray-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900">Schedule Request Status</h3>
+              <button
+                onClick={() => navigate('/doctor-dashboard/schedule')}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm"
+              >
+                View Full Schedule
+              </button>
+            </div>
+          </div>
+          <div className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                <div className="text-2xl font-bold text-yellow-600">
+                  {scheduleRequests.filter(req => req.status === 'pending').length}
+                </div>
+                <div className="text-sm text-yellow-800">Pending</div>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">
+                  {scheduleRequests.filter(req => req.status === 'approved').length}
+                </div>
+                <div className="text-sm text-green-800">Approved</div>
+              </div>
+              <div className="text-center p-4 bg-red-50 rounded-lg">
+                <div className="text-2xl font-bold text-red-600">
+                  {scheduleRequests.filter(req => req.status === 'rejected').length}
+                </div>
+                <div className="text-sm text-red-800">Rejected</div>
+              </div>
+            </div>
+            {scheduleRequests.filter(req => req.status === 'pending').length > 0 && (
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  You have {scheduleRequests.filter(req => req.status === 'pending').length} pending schedule request(s). 
+                  Check your schedule page for updates.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Care Tasks Section */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
