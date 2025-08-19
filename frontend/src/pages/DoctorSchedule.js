@@ -495,7 +495,7 @@ const DoctorSchedule = () => {
               My Schedule
             </h1>
             <p className="text-xs sm:text-sm text-gray-600">View your current schedule and appointments</p>
-          </div>
+        </div>
           <div className="flex items-center space-x-2 sm:space-x-3">
             <button
               onClick={() => setShowRequestModal(true)}
@@ -529,7 +529,7 @@ const DoctorSchedule = () => {
             </button>
           </div>
         </div>
-        </div>
+      </div>
 
       {/* Notification Queue */}
       {notificationQueue.length > 0 && (
@@ -587,12 +587,12 @@ const DoctorSchedule = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Working Days */}
-            <div>
+          <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4">Working Days</h3>
               <div className="space-y-2">
                 {Object.entries(schedule.workingDays).map(([day, isWorking]) => (
                   <label key={day} className="flex items-center space-x-3">
-                    <input
+            <input
                       type="checkbox"
                       checked={isWorking}
                       disabled={true}
@@ -603,11 +603,11 @@ const DoctorSchedule = () => {
                     </span>
                   </label>
                 ))}
-        </div>
+          </div>
       </div>
 
             {/* Work Hours */}
-            <div>
+          <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4">Work Hours</h3>
               <div className="grid grid-cols-2 gap-4">
           <div>
@@ -699,7 +699,7 @@ const DoctorSchedule = () => {
                     disabled={true}
                     className="px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
                   />
-                  <select
+            <select
                     value={leaveDay.type}
                     disabled={true}
                     className="px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
@@ -709,8 +709,8 @@ const DoctorSchedule = () => {
                     <option value="Sick Leave">Sick Leave</option>
                     <option value="Personal">Personal</option>
                     <option value="Conference">Conference</option>
-                  </select>
-                  <select
+            </select>
+            <select
                     value={leaveDay.status}
                     disabled={true}
                     className="px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
@@ -718,9 +718,9 @@ const DoctorSchedule = () => {
                     <option value="Pending">Pending</option>
                     <option value="Approved">Approved</option>
                     <option value="Denied">Denied</option>
-                  </select>
-                  <input
-                    type="text"
+            </select>
+            <input
+              type="text"
                     placeholder="Notes"
                     value={leaveDay.notes}
                     disabled={true}
@@ -757,8 +757,8 @@ const DoctorSchedule = () => {
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
-            </div>
-
+        </div>
+        
             {/* View Mode and Filters */}
             <div className="flex items-center space-x-2">
               <select
@@ -943,33 +943,33 @@ const DoctorSchedule = () => {
             
             <div className="px-4 sm:px-6 py-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div>
+                        <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Patient</label>
                   <p className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-lg">
                     {selectedAppointment.patient?.firstName} {selectedAppointment.patient?.lastName}
                   </p>
-                </div>
+                          </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Date & Time</label>
                   <p className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-lg">
                     {new Date(selectedAppointment.appointmentDate).toLocaleDateString()} at {formatTime(selectedAppointment.appointmentTime)}
                   </p>
-                </div>
+                          </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedAppointment.status)}`}>
                     {selectedAppointment.status}
                   </span>
-                </div>
+                        </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(selectedAppointment.priority)}`}>
                     {selectedAppointment.priority}
                   </span>
-                </div>
+                      </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
@@ -1161,8 +1161,8 @@ const DoctorSchedule = () => {
                                 <span className="font-medium">Description:</span> {request.description}
                               </p>
                             </div>
-                          )}
-                        </div>
+                              )}
+                            </div>
                       </div>
                       
                       {/* Admin response */}
@@ -1215,20 +1215,20 @@ const DoctorSchedule = () => {
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-blue-100 rounded-lg">
                     <Calendar className="h-5 w-5 text-blue-600" />
-                  </div>
+          </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">Request Schedule Change</h3>
                     <p className="text-sm text-gray-600">Submit a new schedule request</p>
-                  </div>
-                </div>
+          </div>
+          </div>
                 <button
                   onClick={() => setShowRequestModal(false)}
                   className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   <X className="h-5 w-5" />
                 </button>
-        </div>
-      </div>
+          </div>
+          </div>
 
             <div className="px-6 py-6 space-y-6">
               <div>
@@ -1246,7 +1246,7 @@ const DoctorSchedule = () => {
                   <option value="break_change">☕ Break Time Change</option>
                   <option value="other">📋 Other</option>
                 </select>
-              </div>
+          </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1260,7 +1260,7 @@ const DoctorSchedule = () => {
                     onChange={(e) => setScheduleRequest(prev => ({ ...prev, startDate: e.target.value }))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   />
-                </div>
+        </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
                     <Clock className="h-4 w-4 mr-2 text-red-600" />
@@ -1272,7 +1272,7 @@ const DoctorSchedule = () => {
                     onChange={(e) => setScheduleRequest(prev => ({ ...prev, endDate: e.target.value }))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   />
-                </div>
+      </div>
           </div>
 
               <div>

@@ -30,7 +30,9 @@ import {
   Clock,
   TestTube,
   Microscope,
-  MessageSquare
+  MessageSquare,
+  Lock,
+  Wrench
 } from 'lucide-react';
 
 const adminGroups = [
@@ -106,8 +108,8 @@ const Layout = () => {
                         { name: 'Care Tasks', href: '/admin-dashboard/care-tasks', icon: Clipboard },
               { name: 'Inventory', href: '/admin-dashboard/inventory', icon: Package },
               { name: 'Equipment', href: '/admin-dashboard/equipment', icon: Microscope },
-              { name: 'Schedule Requests', href: '/admin-dashboard/schedule-requests', icon: MessageSquare },
-              { name: 'Statistics & Analytics', href: '/admin-dashboard/stats', icon: BarChart3 },
+                        { name: 'Schedule Requests', href: '/admin-dashboard/schedule-requests', icon: MessageSquare },
+          { name: 'Statistics & Analytics', href: '/admin-dashboard/stats', icon: BarChart3 },
         ];
       case 'doctor':
         return [
@@ -152,6 +154,18 @@ const Layout = () => {
           { name: 'Inventory', href: '/lab-technician-dashboard/inventory', icon: Package },
           { name: 'Reports', href: '/lab-technician-dashboard/reports', icon: FileText },
           { name: 'Settings', href: '/lab-technician-dashboard/settings', icon: Settings },
+        ];
+      case 'it':
+        return [
+          ...baseNavigation,
+          { name: 'System Health', href: '/it-dashboard/health', icon: Database },
+          { name: 'User Management', href: '/it-dashboard/users', icon: Users },
+          { name: 'Locked Accounts', href: '/it-dashboard/locked-accounts', icon: Lock },
+          { name: 'Maintenance Mode', href: '/it-dashboard/maintenance', icon: Wrench },
+          { name: 'Security Alerts', href: '/it-dashboard/security', icon: Shield },
+          { name: 'Support Tickets', href: '/it-dashboard/support', icon: MessageSquare },
+          { name: 'System Metrics', href: '/it-dashboard/metrics', icon: BarChart3 },
+          { name: 'Recent Activity', href: '/it-dashboard/activity', icon: Clock },
         ];
       case 'user':
       case 'patient':

@@ -48,7 +48,8 @@ const Users = () => {
     { value: 'nurse', label: 'Nurse' },
     { value: 'receptionist', label: 'Receptionist' },
     { value: 'pharmacist', label: 'Pharmacist' },
-    { value: 'lab_technician', label: 'Lab Technician' }
+    { value: 'lab_technician', label: 'Lab Technician' },
+    { value: 'it', label: 'IT' }
   ];
 
   const departments = [

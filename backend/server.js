@@ -6,7 +6,7 @@ const morgan = require('morgan');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-require('dotenv').config({ path: '../config.env' });
+require('dotenv').config({ path: path.join(__dirname, '../config.env') });
 
 const app = express();
 const server = http.createServer(app);
@@ -93,6 +93,10 @@ app.use(express.urlencoded({ extended: true }));
 app.options('*', cors());
 
 // MongoDB Connection
+console.log('Environment variables loaded:');
+console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'Found' : 'Not found');
+console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Found' : 'Not found');
+console.log('PORT:', process.env.PORT || 'Using default 5000');
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -137,6 +141,7 @@ app.use('/api/lab-equipment', require('./routes/labEquipment'));
 app.use('/api/lab-inventory', require('./routes/labInventory'));
 app.use('/api/doctor-schedule', require('./routes/doctorSchedule'));
 app.use('/api/schedule-requests', require('./routes/scheduleRequests'));
+app.use('/api/it', require('./routes/itDashboard'));
 console.log('Routes registered successfully');
 
 // Health check endpoint
@@ -168,6 +173,23 @@ app.get('/api/test', (req, res) => {
     headers: req.headers,
     userAgent: req.get('User-Agent')
   });
+});
+
+// Public maintenance status endpoint (no authentication required)
+app.get('/api/maintenance/status', async (req, res) => {
+  try {
+    const SystemSettings = require('./models/SystemSettings');
+    const settings = await SystemSettings.getInstance();
+    res.json({
+      maintenanceMode: settings.maintenanceMode.enabled,
+      message: settings.maintenanceMode.message,
+      estimatedDuration: settings.maintenanceMode.estimatedDuration,
+      activatedAt: settings.maintenanceMode.activatedAt
+    });
+  } catch (error) {
+    console.error('Error fetching public maintenance status:', error);
+    res.status(500).json({ error: 'Failed to fetch maintenance status' });
+  }
 });
 
 // Serve static files from the React app build directory

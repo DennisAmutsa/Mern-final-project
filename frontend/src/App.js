@@ -42,6 +42,7 @@ import LabTechnicianDashboard from './pages/LabTechnicianDashboard';
 import Equipment from './pages/Equipment';
 import LabOrders from './pages/LabOrders';
 import ScheduleRequests from './pages/ScheduleRequests';
+import ITDashboard from './pages/ITDashboard';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -154,6 +155,7 @@ function AppRoutes() {
         <Route path="inventory" element={<Inventory />} />
         <Route path="equipment" element={<Equipment />} />
         <Route path="schedule-requests" element={<ScheduleRequests />} />
+        <Route path="it" element={<ITDashboard />} />
         <Route path="stats" element={<Stats />} />
         <Route path="users" element={<Users />} />
         <Route path="users/add" element={<Users />} />
@@ -241,6 +243,24 @@ function AppRoutes() {
         <Route path="inventory" element={<LabTechnicianDashboard />} />
         <Route path="reports" element={<LabTechnicianDashboard />} />
         <Route path="settings" element={<LabTechnicianDashboard />} />
+      </Route>
+
+      <Route path="/it-dashboard" element={
+        <ProtectedRoute>
+          <RoleBasedRoute allowedRoles={['it']}>
+            <Layout />
+          </RoleBasedRoute>
+        </ProtectedRoute>
+      }>
+        <Route index element={<ITDashboard />} />
+        <Route path="health" element={<ITDashboard />} />
+        <Route path="users" element={<ITDashboard />} />
+        <Route path="locked-accounts" element={<ITDashboard />} />
+        <Route path="maintenance" element={<ITDashboard />} />
+        <Route path="security" element={<ITDashboard />} />
+        <Route path="support" element={<ITDashboard />} />
+        <Route path="metrics" element={<ITDashboard />} />
+        <Route path="activity" element={<ITDashboard />} />
       </Route>
 
       {/* Catch all route */}

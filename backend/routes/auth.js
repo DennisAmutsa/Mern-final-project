@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
+const SystemSettings = require('../models/SystemSettings');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const logAudit = require('../utils/auditLogger');
 
@@ -36,6 +37,19 @@ router.post('/register', [
 
     const { username, email, password, firstName, lastName, employeeId, role } = req.body;
 
+    // Validate role
+    const validRoles = ['admin', 'doctor', 'nurse', 'receptionist', 'pharmacist', 'lab_technician', 'it', 'user', 'patient', 'staff', 'pending'];
+    const userRole = role || 'user';
+    
+    if (!validRoles.includes(userRole)) {
+      console.log('❌ Invalid role provided:', userRole);
+      return res.status(400).json({ 
+        error: `Invalid role: ${userRole}. Valid roles are: ${validRoles.join(', ')}` 
+      });
+    }
+
+    console.log('🔍 Registration data:', { username, email, role: userRole, employeeId });
+
     // Check if user already exists
     const existingUser = await User.findOne({
       $or: [{ username }, { email }]
@@ -45,6 +59,29 @@ router.post('/register', [
       return res.status(400).json({ error: 'Username or email already exists' });
     }
 
+    // Validate permissions
+    const validPermissions = [
+      'view_patients', 'edit_patients', 'delete_patients',
+      'view_doctors', 'edit_doctors', 'delete_doctors',
+      'view_appointments', 'edit_appointments', 'delete_appointments',
+      'view_emergency', 'edit_emergency',
+      'view_inventory', 'edit_inventory', 'delete_inventory',
+      'view_stats', 'view_reports',
+      'manage_users', 'system_admin', 'view_profile'
+    ];
+    
+    const defaultPermissions = ['view_profile', 'view_appointments'];
+    
+    // Validate that all default permissions are valid
+    for (const permission of defaultPermissions) {
+      if (!validPermissions.includes(permission)) {
+        console.log('❌ Invalid permission in defaults:', permission);
+        return res.status(500).json({ 
+          error: `Invalid permission in defaults: ${permission}` 
+        });
+      }
+    }
+
     // Only set employeeId for staff roles
     let userData = {
       username,
@@ -52,9 +89,9 @@ router.post('/register', [
       password,
       firstName,
       lastName,
-      role: role || 'user',
+      role: userRole,
       isActive: true,
-      permissions: ['view_profile', 'view_appointments']
+      permissions: defaultPermissions
     };
     const staffRoles = ['admin', 'doctor', 'nurse', 'receptionist', 'pharmacist'];
     if (staffRoles.includes(userData.role) && employeeId) {
@@ -99,36 +136,155 @@ router.post('/login', [
 
     const { username, password } = req.body;
 
-    // Find user by username or email
+    // Find user by username or email (do this once)
     const user = await User.findOne({
       $or: [{ username }, { email: username }]
     });
 
     if (!user) {
-      await logAudit({ req, action: 'LOGIN', description: `Failed login for ${username}`, status: 'FAILED' });
+      await logAudit({ 
+        req, 
+        action: 'LOGIN_FAILED', 
+        description: `Failed login attempt for non-existent user: ${username}`, 
+        status: 'FAILED',
+        details: `Failed login attempt for unknown user "${username}"`
+      });
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check maintenance mode status
+    const settings = await SystemSettings.getInstance();
+    console.log(`🔍 Maintenance mode check - enabled: ${settings.maintenanceMode.enabled}`);
+    
+    if (settings.maintenanceMode.enabled) {
+      console.log(`🔧 Maintenance mode active. User role: ${user.role}, Email: ${user.email}`);
+      console.log(`🔍 Comparing user.role (${user.role}) with 'it' - Case-insensitive Result: ${user.role.toLowerCase() === 'it'}`);
+      
+      // Only allow IT users to login during maintenance (case-insensitive check)
+      if (user.role.toLowerCase() !== 'it') {
+        console.log(`❌ Blocking non-IT user: ${user.email} (role: ${user.role})`);
+        await logAudit({ 
+          req, 
+          action: 'LOGIN_BLOCKED', 
+          description: `Login blocked during maintenance for non-IT user ${username} (${user.email})`, 
+          status: 'BLOCKED',
+          details: {
+            type: 'MAINTENANCE_MODE',
+            email: user.email,
+            role: user.role,
+            reason: 'Non-IT user attempted to login during maintenance mode'
+          }
+        });
+        return res.status(503).json({ 
+          error: 'System Under Maintenance', 
+          message: settings.maintenanceMode.message || 'System is currently under maintenance. Please try again later.',
+          type: 'MAINTENANCE_MODE',
+          estimatedDuration: settings.maintenanceMode.estimatedDuration,
+          activatedAt: settings.maintenanceMode.activatedAt
+        });
+      } else {
+        console.log(`✅ IT user ${user.email} allowed to login during maintenance`);
+      }
+    } else {
+      console.log(`✅ No maintenance mode - allowing login for ${user.email}`);
     }
 
     // Check if user is active
     if (!user.isActive) {
-      await logAudit({ req, action: 'LOGIN', description: `Login attempt for deactivated user ${username}`, status: 'FAILED' });
-      return res.status(401).json({ error: 'Account is deactivated. Please contact administrator.' });
+      await logAudit({ 
+        req, 
+        action: 'LOGIN_BLOCKED', 
+        description: `Login attempt blocked for suspended user ${username} (${user.email})`, 
+        status: 'BLOCKED',
+        details: `Suspended user ${user.email} attempted to login` 
+      });
+      return res.status(403).json({ 
+        error: 'Account Suspended', 
+        message: 'Your account has been suspended by the administrator. Please contact IT support for assistance.',
+        type: 'ACCOUNT_SUSPENDED',
+        supportContact: 'epicedgecreative@gmail.com'
+      });
+    }
+
+    // Check if account is locked due to failed attempts
+    if (user.accountLocked) {
+      await logAudit({ 
+        req, 
+        action: 'LOGIN_BLOCKED', 
+        description: `Login attempt blocked for locked account ${username} (${user.email})`, 
+        status: 'BLOCKED',
+        details: `Locked account ${user.email} attempted to login` 
+      });
+      return res.status(423).json({ 
+        error: 'Account Locked', 
+        message: 'Your account has been locked due to multiple failed login attempts. Please contact IT support for assistance.',
+        type: 'ACCOUNT_LOCKED',
+        supportContact: 'epicedgecreative@gmail.com'
+      });
     }
 
     // Verify password
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
-      await logAudit({ req, action: 'LOGIN', description: `Failed login for ${username}`, status: 'FAILED' });
-      return res.status(401).json({ error: 'Invalid credentials' });
+      // Increment failed login attempts
+      user.failedLoginAttempts += 1;
+      user.lastFailedLogin = new Date();
+      
+      // Check if account should be locked (after 4 failed attempts)
+      if (user.failedLoginAttempts >= 4) {
+        user.accountLocked = true;
+        user.accountLockedAt = new Date();
+        user.accountLockedBy = 'system';
+        
+        await user.save();
+        
+        await logAudit({ 
+          req, 
+          action: 'ACCOUNT_LOCKED', 
+          description: `Account locked due to multiple failed login attempts: ${user.email}`, 
+          status: 'LOCKED',
+          details: `Account ${user.email} locked after ${user.failedLoginAttempts} failed attempts`
+        });
+        
+        return res.status(423).json({ 
+          error: 'Account Locked', 
+          message: 'Your account has been locked due to multiple failed login attempts. Please contact IT support for assistance.',
+          type: 'ACCOUNT_LOCKED',
+          supportContact: 'epicedgecreative@gmail.com'
+        });
+      }
+      
+      await user.save();
+      
+      await logAudit({ 
+        req, 
+        action: 'LOGIN_FAILED', 
+        description: `Failed login attempt for user: ${user.email}`, 
+        status: 'FAILED',
+        details: `User ${user.email} entered incorrect password (attempt ${user.failedLoginAttempts}/4)`
+      });
+      
+      return res.status(401).json({ 
+        error: 'Invalid credentials',
+        message: `Failed login attempt ${user.failedLoginAttempts} of 4. Account will be locked after 4 failed attempts.`
+      });
     }
 
-    // Update last login
+    // Reset failed login attempts on successful login
+    user.failedLoginAttempts = 0;
+    user.lastFailedLogin = null;
     user.lastLogin = new Date();
     await user.save();
 
     // Generate token
     const token = generateToken(user._id);
-    await logAudit({ req, action: 'LOGIN', description: `User ${user.email} logged in`, status: 'SUCCESS' });
+    await logAudit({ 
+      req, 
+      action: 'LOGIN_SUCCESS', 
+      description: `Successful login for user: ${user.email}`, 
+      status: 'SUCCESS',
+      details: `User ${user.email} logged in successfully`
+    });
 
     res.json({
       message: 'Login successful',
@@ -302,7 +458,7 @@ router.post('/users', authenticateToken, requireRole('admin'), [
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   body('firstName').notEmpty().withMessage('First name is required'),
   body('lastName').notEmpty().withMessage('Last name is required'),
-  body('role').isIn(['admin', 'doctor', 'nurse', 'receptionist', 'pharmacist']).withMessage('Valid role required'),
+  body('role').isIn(['admin', 'doctor', 'nurse', 'receptionist', 'pharmacist', 'it']).withMessage('Valid role required'),
   body('department').optional().isIn(['Emergency', 'Cardiology', 'Neurology', 'Pediatrics', 'Orthopedics', 'General Medicine', 'Surgery', 'ICU', 'Pharmacy', 'Administration']),
   body('employeeId').optional().isString().withMessage('Employee ID must be a string')
 ], async (req, res) => {
@@ -360,6 +516,12 @@ router.post('/users', authenticateToken, requireRole('admin'), [
           'view_patients'
         ];
         break;
+      case 'it':
+        permissions = [
+          'system_admin', 'manage_users', 'view_it_dashboard',
+          'view_system_health', 'manage_infrastructure'
+        ];
+        break;
     }
 
     // Create new user
@@ -397,7 +559,7 @@ router.put('/users/:userId', authenticateToken, requireRole('admin'), [
   body('firstName').optional().notEmpty().withMessage('First name cannot be empty'),
   body('lastName').optional().notEmpty().withMessage('Last name cannot be empty'),
   body('email').optional().isEmail().withMessage('Valid email required'),
-  body('role').optional().isIn(['admin', 'doctor', 'nurse', 'receptionist', 'pharmacist']).withMessage('Valid role required'),
+  body('role').optional().isIn(['admin', 'doctor', 'nurse', 'receptionist', 'pharmacist', 'it']).withMessage('Valid role required'),
   body('department').optional().isIn(['Emergency', 'Cardiology', 'Neurology', 'Pediatrics', 'Orthopedics', 'General Medicine', 'Surgery', 'ICU', 'Pharmacy', 'Administration']),
   body('employeeId').optional().isString().withMessage('Employee ID must be a string'),
   body('isActive').optional().isBoolean().withMessage('isActive must be a boolean')
@@ -454,6 +616,12 @@ router.put('/users/:userId', authenticateToken, requireRole('admin'), [
             'view_patients'
           ];
           break;
+        case 'it':
+          permissions = [
+            'system_admin', 'manage_users', 'view_it_dashboard',
+            'view_system_health', 'manage_infrastructure'
+          ];
+          break;
       }
       updateData.permissions = permissions;
     }
@@ -488,7 +656,7 @@ router.put('/users/:userId', authenticateToken, requireRole('admin'), [
 
 // Update user role and department (admin only)
 router.put('/users/:userId/assign-role', authenticateToken, requireRole('admin'), [
-  body('role').isIn(['admin', 'doctor', 'nurse', 'receptionist', 'pharmacist']).withMessage('Valid role required'),
+  body('role').isIn(['admin', 'doctor', 'nurse', 'receptionist', 'pharmacist', 'it']).withMessage('Valid role required'),
   body('department').optional().isIn(['Emergency', 'Cardiology', 'Neurology', 'Pediatrics', 'Orthopedics', 'General Medicine', 'Surgery', 'ICU', 'Pharmacy', 'Administration']),
   body('employeeId').optional().isString().withMessage('Employee ID must be a string')
 ], async (req, res) => {
@@ -533,6 +701,12 @@ router.put('/users/:userId/assign-role', authenticateToken, requireRole('admin')
         permissions = [
           'view_inventory', 'edit_inventory',
           'view_patients'
+        ];
+        break;
+      case 'it':
+        permissions = [
+          'system_admin', 'manage_users', 'view_it_dashboard',
+          'view_system_health', 'manage_infrastructure'
         ];
         break;
     }

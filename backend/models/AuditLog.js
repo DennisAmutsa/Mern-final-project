@@ -6,9 +6,10 @@ const auditLogSchema = new mongoose.Schema({
   description: { type: String },
   ipAddress: { type: String },
   userAgent: { type: String },
-  timestamp: { type: Date, default: Date.now },
-  status: { type: String, enum: ['SUCCESS', 'FAILED', 'WARNING'], default: 'SUCCESS' },
+  status: { type: String, enum: ['SUCCESS', 'FAILED', 'WARNING', 'BLOCKED'], default: 'SUCCESS' },
   details: { type: mongoose.Schema.Types.Mixed }
+}, {
+  timestamps: true // This will add createdAt and updatedAt fields
 });
 
 module.exports = mongoose.model('AuditLog', auditLogSchema); 

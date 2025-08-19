@@ -60,7 +60,143 @@ export const AuthProvider = ({ children }) => {
       toast.success('Login successful!');
       return { success: true, dashboardPath: getDashboardPath(userData.role) };
     } catch (error) {
-      const message = error.response?.data?.error || 'Login failed';
+      const errorData = error.response?.data;
+      
+      // Handle suspended account specially
+      if (errorData?.type === 'ACCOUNT_SUSPENDED') {
+        const suspendedMessage = (
+          <div>
+            <div className="font-bold text-red-600 mb-2">🚫 Account Suspended</div>
+            <div className="text-sm text-gray-700 mb-2">{errorData.message}</div>
+            {errorData.supportContact && (
+              <div className="text-xs text-blue-600">
+                📧 Contact: {errorData.supportContact}
+              </div>
+            )}
+          </div>
+        );
+        
+        toast.error(suspendedMessage, {
+          duration: 8000, // Show longer for suspended accounts
+          style: {
+            background: '#fee2e2',
+            border: '1px solid #fca5a5',
+            color: '#dc2626',
+            minWidth: '350px'
+          }
+        });
+        
+        return { 
+          success: false, 
+          error: errorData.error,
+          type: 'ACCOUNT_SUSPENDED',
+          message: errorData.message,
+          supportContact: errorData.supportContact
+        };
+      }
+
+      // Handle locked account specially
+      if (errorData?.type === 'ACCOUNT_LOCKED') {
+        const lockedMessage = (
+          <div>
+            <div className="font-bold text-orange-600 mb-2">🔒 Account Locked</div>
+            <div className="text-sm text-gray-700 mb-2">{errorData.message}</div>
+            {errorData.supportContact && (
+              <div className="text-xs text-blue-600">
+                📧 Contact: {errorData.supportContact}
+              </div>
+            )}
+          </div>
+        );
+        
+        toast.error(lockedMessage, {
+          duration: 8000, // Show longer for locked accounts
+          style: {
+            background: '#fef3c7',
+            border: '1px solid #fbbf24',
+            color: '#d97706',
+            minWidth: '350px'
+          }
+        });
+        
+        return { 
+          success: false, 
+          error: errorData.error,
+          type: 'ACCOUNT_LOCKED',
+          message: errorData.message,
+          supportContact: errorData.supportContact
+        };
+      }
+
+      // Handle maintenance mode specially
+      if (errorData?.type === 'MAINTENANCE_MODE') {
+        const maintenanceMessage = (
+          <div>
+            <div className="font-bold text-orange-600 mb-2">🔧 System Under Maintenance</div>
+            <div className="text-sm text-gray-700 mb-2">{errorData.message}</div>
+            {errorData.estimatedDuration && (
+              <div className="text-xs text-gray-600">
+                ⏱️ Estimated Duration: {errorData.estimatedDuration}
+              </div>
+            )}
+            <div className="text-xs text-blue-600 mt-1">
+              📧 Contact: epicedgecreative@gmail.com
+            </div>
+          </div>
+        );
+        
+        toast.error(maintenanceMessage, {
+          duration: 10000, // Show longer for maintenance mode
+          style: {
+            background: '#fef3c7',
+            border: '1px solid #fbbf24',
+            color: '#d97706',
+            minWidth: '350px'
+          }
+        });
+        
+        return { 
+          success: false, 
+          error: errorData.error,
+          type: 'MAINTENANCE_MODE',
+          message: errorData.message,
+          estimatedDuration: errorData.estimatedDuration,
+          activatedAt: errorData.activatedAt
+        };
+      }
+      
+      // Handle failed login attempts with attempt count
+      if (errorData?.message && errorData.message.includes('Failed login attempt')) {
+        const attemptMessage = (
+          <div>
+            <div className="font-bold text-red-600 mb-2">❌ Login Failed</div>
+            <div className="text-sm text-gray-700 mb-2">{errorData.message}</div>
+            <div className="text-xs text-orange-600 mt-1">
+              ⚠️ Account will be locked after 4 failed attempts
+            </div>
+          </div>
+        );
+        
+        toast.error(attemptMessage, {
+          duration: 6000,
+          style: {
+            background: '#fee2e2',
+            border: '1px solid #fca5a5',
+            color: '#dc2626',
+            minWidth: '350px'
+          }
+        });
+        
+        return { 
+          success: false, 
+          error: errorData.error,
+          message: errorData.message,
+          type: 'LOGIN_FAILED'
+        };
+      }
+      
+      // Handle other errors normally
+      const message = errorData?.error || 'Login failed';
       toast.error(message);
       return { success: false, error: message };
     }
@@ -145,6 +281,8 @@ export const AuthProvider = ({ children }) => {
         return '/pharmacist-dashboard';
       case 'lab_technician':
         return '/lab-technician-dashboard';
+      case 'it':
+        return '/it-dashboard';
       case 'user':
       case 'patient':
       case 'staff':

@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'doctor', 'nurse', 'receptionist', 'pharmacist', 'lab_technician', 'user', 'patient', 'staff', 'pending'],
+    enum: ['admin', 'doctor', 'nurse', 'receptionist', 'pharmacist', 'lab_technician', 'it', 'user', 'patient', 'staff', 'pending'],
     default: 'user'
   },
   department: {
@@ -195,6 +195,27 @@ const userSchema = new mongoose.Schema({
   },
   lastLogin: {
     type: Date
+  },
+  // Failed login attempt tracking
+  failedLoginAttempts: {
+    type: Number,
+    default: 0
+  },
+  lastFailedLogin: {
+    type: Date
+  },
+  accountLocked: {
+    type: Boolean,
+    default: false
+  },
+  accountLockedAt: {
+    type: Date
+  },
+  accountLockedBy: {
+    type: String,
+    enum: ['system', 'admin'],
+    default: 'system',
+    required: false
   },
   lastVitalCheck: {
     type: Date,
