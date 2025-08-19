@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users as UsersIcon, UserPlus, Shield, UserCheck, UserX, Edit, Trash2, Search, Filter } from 'lucide-react';
 import apiClient from '../config/axios';
+import toast from 'react-hot-toast';
 
 const Users = () => {
   const [users, setUsers] = useState([]);
@@ -8,6 +9,10 @@ const Users = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [usersPerPage, setUsersPerPage] = useState(10);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -56,14 +61,67 @@ const Users = () => {
     fetchUsers();
   }, []);
 
-  const fetchUsers = async () => {
+  // Handle search and filter changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchUsers(1, searchTerm, roleFilter);
+    }, 500); // Debounce search
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, roleFilter]);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchUsers(page, searchTerm, roleFilter);
+  };
+
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
+  const handleRoleFilterChange = (value) => {
+    setRoleFilter(value);
+    setCurrentPage(1); // Reset to first page when filtering
+  };
+
+  const fetchUsers = async (page = currentPage, search = searchTerm, role = roleFilter) => {
     try {
-      console.log('🔍 Fetching users...');
-      const response = await apiClient.get('/api/users');
+      setLoading(true);
+      console.log('🔍 Fetching users...', { page, search, role });
+      
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: usersPerPage.toString()
+      });
+      
+      if (search) {
+        params.append('search', search);
+      }
+      
+      if (role) {
+        params.append('roles', role);
+      }
+      
+      const response = await apiClient.get(`/api/users?${params}`);
       console.log('📊 Users response:', response.data);
-      setUsers(Array.isArray(response.data) ? response.data : []);
+      
+      if (response.data.users) {
+        setUsers(response.data.users);
+        setCurrentPage(response.data.pagination.currentPage);
+        setTotalPages(response.data.pagination.totalPages);
+        setTotalUsers(response.data.pagination.totalUsers);
+        setUsersPerPage(response.data.pagination.usersPerPage);
+      } else {
+        // Fallback for old API format
+        setUsers(Array.isArray(response.data) ? response.data : []);
+        setCurrentPage(1);
+        setTotalPages(1);
+        setTotalUsers(response.data.length || 0);
+      }
     } catch (error) {
       console.error('❌ Error fetching users:', error);
+      toast.error('Failed to fetch users');
     } finally {
       setLoading(false);
     }
@@ -164,16 +222,8 @@ const Users = () => {
     }
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.lastName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = !roleFilter || user.role === roleFilter;
-    const matchesDepartment = !departmentFilter || user.department === departmentFilter;
-    
-    return matchesSearch && matchesRole && matchesDepartment;
-  });
+  // Since filtering is now handled on the backend, we can use the users directly
+  const filteredUsers = users;
 
   const getRoleColor = (role) => {
     switch (role) {
@@ -211,7 +261,7 @@ const Users = () => {
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <UsersIcon className="h-6 w-6 text-blue-600" />
-            <span className="text-sm text-gray-500">{users.length} users</span>
+            <span className="text-sm text-gray-500">{totalUsers} users</span>
           </div>
           <button
             onClick={() => setShowAddUserModal(true)}
@@ -234,7 +284,7 @@ const Users = () => {
                 type="text"
                 placeholder="Search users..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -243,7 +293,7 @@ const Users = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
             <select
               value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
+              onChange={(e) => handleRoleFilterChange(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All Roles</option>
@@ -268,8 +318,8 @@ const Users = () => {
           <div className="flex items-end">
             <button
               onClick={() => {
-                setSearchTerm('');
-                setRoleFilter('');
+                handleSearchChange('');
+                handleRoleFilterChange('');
                 setDepartmentFilter('');
               }}
               className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
@@ -387,6 +437,64 @@ const Users = () => {
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="bg-white rounded-lg shadow px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-700">
+              Showing {((currentPage - 1) * usersPerPage) + 1} to {Math.min(currentPage * usersPerPage, totalUsers)} of {totalUsers} users
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            
+            {/* Page numbers */}
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    className={`px-3 py-1 text-sm border rounded-md ${
+                      currentPage === pageNum
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+            
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Assign Role Modal */}
       {showAssignModal && selectedUser && (

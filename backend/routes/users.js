@@ -7,14 +7,19 @@ const mongoose = require('mongoose');
 // Get users by roles (e.g., /api/users?roles=user,patient)
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const { roles, assignedDoctor } = req.query;
-    console.log('🔍 Users GET request - roles:', roles, 'assignedDoctor:', assignedDoctor);
+    const { roles, assignedDoctor, page = 1, limit = 10, search } = req.query;
+    console.log('🔍 Users GET request - roles:', roles, 'assignedDoctor:', assignedDoctor, 'page:', page, 'limit:', limit);
+    
     let query = {};
+    
+    // Role filtering
     if (roles) {
       const rolesArray = roles.split(',').map(r => r.trim());
       query.role = { $in: rolesArray };
       console.log('📋 Query roles:', rolesArray);
     }
+    
+    // Doctor assignment filtering
     if (assignedDoctor) {
       // Match both ObjectId and string for robustness
       try {
@@ -23,12 +28,50 @@ router.get('/', authenticateToken, async (req, res) => {
         query.assignedDoctor = assignedDoctor;
       }
     }
+    
+    // Search functionality
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { username: { $regex: search, $options: 'i' } },
+        { employeeId: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    // Pagination
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+    
+    // Get total count for pagination
+    const totalUsers = await User.countDocuments(query);
+    const totalPages = Math.ceil(totalUsers / limitNum);
+    
+    // Get paginated users
     const users = await User.find(query)
       .select('-password -resetPasswordToken -resetPasswordExpires')
-      .populate('assignedDoctor', 'firstName lastName email department specialization');
-    console.log('📊 Found users:', users.length);
-    res.json(users);
+      .populate('assignedDoctor', 'firstName lastName email department specialization')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+    
+    console.log('📊 Found users:', users.length, 'Total:', totalUsers, 'Page:', pageNum, 'of', totalPages);
+    
+    res.json({
+      users,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalUsers,
+        usersPerPage: limitNum,
+        hasNextPage: pageNum < totalPages,
+        hasPrevPage: pageNum > 1
+      }
+    });
   } catch (error) {
+    console.error('❌ Error fetching users:', error);
     res.status(500).json({ error: error.message });
   }
 });
