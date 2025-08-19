@@ -22,6 +22,27 @@ const systemSettingsSchema = new mongoose.Schema({
       default: '2 hours'
     }
   },
+  systemLock: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    activatedAt: {
+      type: Date
+    },
+    activatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    reason: {
+      type: String,
+      default: 'System is currently locked for security reasons.'
+    },
+    emergencyContact: {
+      type: String,
+      default: 'epicedgecreative@gmail.com'
+    }
+  },
   lastUpdated: {
     type: Date,
     default: Date.now

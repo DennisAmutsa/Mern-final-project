@@ -257,6 +257,7 @@ function AppRoutes() {
         <Route path="users" element={<ITDashboard />} />
         <Route path="locked-accounts" element={<ITDashboard />} />
         <Route path="maintenance" element={<ITDashboard />} />
+        <Route path="system-lock" element={<ITDashboard />} />
         <Route path="security" element={<ITDashboard />} />
         <Route path="support" element={<ITDashboard />} />
         <Route path="metrics" element={<ITDashboard />} />

@@ -17,27 +17,35 @@ const Login = () => {
   const [lockedAccount, setLockedAccount] = useState(null);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [maintenanceInfo, setMaintenanceInfo] = useState(null);
+  const [systemLockInfo, setSystemLockInfo] = useState(null);
   const [checkingMaintenance, setCheckingMaintenance] = useState(true);
   
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  // Check maintenance mode on component mount
+  // Check maintenance mode and system lock on component mount
   useEffect(() => {
-    const checkMaintenanceMode = async () => {
+    const checkSystemStatus = async () => {
       try {
-        const response = await apiClient.get('/api/maintenance/status');
-        if (response.data.maintenanceMode) {
-          setMaintenanceInfo(response.data);
+        // Check maintenance mode
+        const maintenanceResponse = await apiClient.get('/api/maintenance/status');
+        if (maintenanceResponse.data.maintenanceMode) {
+          setMaintenanceInfo(maintenanceResponse.data);
+        }
+
+        // Check system lock
+        const systemLockResponse = await apiClient.get('/api/it/system-lock/public-status');
+        if (systemLockResponse.data.systemLocked) {
+          setSystemLockInfo(systemLockResponse.data);
         }
       } catch (error) {
-        console.error('Error checking maintenance mode:', error);
+        console.error('Error checking system status:', error);
       } finally {
         setCheckingMaintenance(false);
       }
     };
 
-    checkMaintenanceMode();
+    checkSystemStatus();
   }, []);
 
   const handleChange = (e) => {
@@ -108,6 +116,31 @@ const Login = () => {
           }
         }
       );
+    } else if (result.type === 'SYSTEM_LOCK') {
+      // Handle system lock error from login attempt
+      toast.error(
+        <div>
+          <div className="font-bold text-red-600 mb-2">🔒 System Locked</div>
+          <div className="text-sm text-gray-700 mb-2">{result.message}</div>
+          <div className="text-xs text-red-600 mb-2">
+            Complete system lockdown is in effect
+          </div>
+          {result.emergencyContact && (
+            <div className="text-xs text-blue-600">
+              📧 Emergency Contact: {result.emergencyContact}
+            </div>
+          )}
+        </div>,
+        {
+          duration: 10000,
+          style: {
+            background: '#fee2e2',
+            border: '1px solid #ef4444',
+            color: '#dc2626',
+            minWidth: '350px'
+          }
+        }
+      );
     } else if (result.type === 'LOGIN_FAILED') {
       // Extract attempt count from message
       const attemptMatch = result.message?.match(/Failed login attempt (\d+) of 4/);
@@ -119,13 +152,14 @@ const Login = () => {
     setLoading(false);
   };
 
-  // Show loading while checking maintenance mode
+  // Show loading while checking system status
   if (checkingMaintenance) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Checking system status...</p>
+          <p className="text-sm text-gray-500 mt-2">Verifying system lock and maintenance mode...</p>
         </div>
       </div>
     );
@@ -153,6 +187,64 @@ const Login = () => {
             Sign in to your account
           </p>
         </div>
+
+        {/* System Lock Status Indicator */}
+        {systemLockInfo && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-red-800">
+                    🔒 System Locked
+                  </h3>
+                  <p className="text-sm text-red-700 mt-1">
+                    {systemLockInfo.reason || 'System is currently locked for security reasons.'}
+                  </p>
+                  <p className="text-xs text-red-600 mt-1">
+                    Complete system lockdown is in effect
+                  </p>
+                  {systemLockInfo.emergencyContact && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      📧 Emergency Contact: {systemLockInfo.emergencyContact}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setCheckingMaintenance(true);
+                  apiClient.get('/api/it/system-lock/public-status')
+                    .then(response => {
+                      if (!response.data.systemLocked) {
+                        setSystemLockInfo(null);
+                        toast.success('System lock has been disabled. You can now login!');
+                      } else {
+                        setSystemLockInfo(response.data);
+                        toast.info('System is still locked. Please contact emergency support.');
+                      }
+                    })
+                    .catch(error => {
+                      console.error('Error checking system lock status:', error);
+                      toast.error('Failed to check system lock status');
+                    })
+                    .finally(() => {
+                      setCheckingMaintenance(false);
+                    });
+                }}
+                disabled={checkingMaintenance}
+                className="flex items-center space-x-1 px-3 py-1 text-xs bg-red-600 text-white rounded-md hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
+              >
+                <svg className={`w-3 h-3 ${checkingMaintenance ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Check Again</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Maintenance Status Indicator */}
         {maintenanceInfo && (

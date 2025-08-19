@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, Heart, UserPlus } from 'lucide-react';
+import apiClient from '../config/axios';
+import toast from 'react-hot-toast';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -16,9 +18,37 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [systemLockInfo, setSystemLockInfo] = useState(null);
+  const [maintenanceInfo, setMaintenanceInfo] = useState(null);
+  const [checkingStatus, setCheckingStatus] = useState(true);
   
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  // Check system status on component mount
+  useEffect(() => {
+    const checkSystemStatus = async () => {
+      try {
+        // Check system lock
+        const systemLockResponse = await apiClient.get('/api/it/system-lock/public-status');
+        if (systemLockResponse.data.systemLocked) {
+          setSystemLockInfo(systemLockResponse.data);
+        }
+
+        // Check maintenance mode (optional)
+        const maintenanceResponse = await apiClient.get('/api/maintenance/status');
+        if (maintenanceResponse.data.maintenanceMode) {
+          setMaintenanceInfo(maintenanceResponse.data);
+        }
+      } catch (error) {
+        console.error('Error checking system status:', error);
+      } finally {
+        setCheckingStatus(false);
+      }
+    };
+
+    checkSystemStatus();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -50,10 +80,26 @@ const Register = () => {
     
     if (result.success) {
       navigate('/login');
+    } else if (result.type === 'SYSTEM_LOCK') {
+      // System lock error is already handled in AuthContext
+      // Just show additional UI feedback if needed
     }
     
     setLoading(false);
   };
+
+  // Show loading while checking system status
+  if (checkingStatus) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking system status...</p>
+          <p className="text-sm text-gray-500 mt-2">Verifying registration availability...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -78,6 +124,57 @@ const Register = () => {
             Your account will be reviewed by an administrator
           </p>
         </div>
+
+        {/* System Lock Status Indicator */}
+        {systemLockInfo && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-red-800">
+                  🔒 Registration Disabled - System Locked
+                </h3>
+                <p className="text-sm text-red-700 mt-1">
+                  {systemLockInfo.reason || 'System is currently locked for security reasons.'}
+                </p>
+                <p className="text-xs text-red-600 mt-1">
+                  Registration is disabled during system lockdown
+                </p>
+                {systemLockInfo.emergencyContact && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    📧 Emergency Contact: {systemLockInfo.emergencyContact}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Maintenance Status Indicator */}
+        {maintenanceInfo && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-orange-800">
+                  System Maintenance Notice
+                </h3>
+                <p className="text-sm text-orange-700 mt-1">
+                  {maintenanceInfo.message || 'System is currently under maintenance.'}
+                </p>
+                {maintenanceInfo.estimatedDuration && (
+                  <p className="text-xs text-orange-600 mt-1">
+                    Estimated Duration: {maintenanceInfo.estimatedDuration}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Register Form */}
         <div className="bg-white rounded-lg shadow-lg p-8">

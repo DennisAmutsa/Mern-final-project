@@ -1186,4 +1186,145 @@ router.get('/blocked-login-attempts', authenticateToken, requireRole(['it']), as
   }
 });
 
+// ===== SYSTEM LOCK ENDPOINTS =====
+
+// Get system lock status
+router.get('/system-lock/status', authenticateToken, requireRole(['it']), async (req, res) => {
+  try {
+    const settings = await SystemSettings.getInstance();
+    res.json({
+      systemLock: settings.systemLock
+    });
+  } catch (error) {
+    console.error('Error fetching system lock status:', error);
+    res.status(500).json({ error: 'Failed to fetch system lock status' });
+  }
+});
+
+// Enable system lock
+router.post('/system-lock/enable', authenticateToken, requireRole(['it']), async (req, res) => {
+  try {
+    const { reason, emergencyContact } = req.body;
+    const settings = await SystemSettings.getInstance();
+    
+    settings.systemLock.enabled = true;
+    settings.systemLock.activatedAt = new Date();
+    settings.systemLock.activatedBy = req.user._id;
+    settings.systemLock.reason = reason || 'System is currently locked for security reasons.';
+    settings.systemLock.emergencyContact = emergencyContact || 'epicedgecreative@gmail.com';
+    settings.lastUpdated = new Date();
+    
+    await settings.save();
+
+    // Log the system lock activation
+    await logAudit({
+      req,
+      action: 'SYSTEM_LOCK_ENABLED',
+      description: `System lock enabled by IT administrator: ${req.user.email}`,
+      status: 'SUCCESS',
+      details: `System lock activated with reason: "${settings.systemLock.reason}"`
+    });
+
+    res.json({
+      message: 'System lock enabled successfully',
+      systemLock: settings.systemLock
+    });
+  } catch (error) {
+    console.error('Error enabling system lock:', error);
+    res.status(500).json({ error: 'Failed to enable system lock' });
+  }
+});
+
+// Disable system lock
+router.post('/system-lock/disable', authenticateToken, requireRole(['it']), async (req, res) => {
+  try {
+    const settings = await SystemSettings.getInstance();
+    
+    settings.systemLock.enabled = false;
+    settings.systemLock.activatedAt = null;
+    settings.systemLock.activatedBy = null;
+    settings.systemLock.reason = '';
+    settings.systemLock.emergencyContact = 'epicedgecreative@gmail.com';
+    settings.lastUpdated = new Date();
+    
+    await settings.save();
+
+    // Log the system lock deactivation
+    await logAudit({
+      req,
+      action: 'SYSTEM_LOCK_DISABLED',
+      description: `System lock disabled by IT administrator: ${req.user.email}`,
+      status: 'SUCCESS',
+      details: 'System lock deactivated'
+    });
+
+    res.json({
+      message: 'System lock disabled successfully',
+      systemLock: settings.systemLock
+    });
+  } catch (error) {
+    console.error('Error disabling system lock:', error);
+    res.status(500).json({ error: 'Failed to disable system lock' });
+  }
+});
+
+// Public endpoint to check system lock status (no authentication required)
+router.get('/system-lock/public-status', async (req, res) => {
+  try {
+    const settings = await SystemSettings.getInstance();
+    res.json({
+      systemLocked: settings.systemLock.enabled,
+      reason: settings.systemLock.reason,
+      emergencyContact: settings.systemLock.emergencyContact,
+      activatedAt: settings.systemLock.activatedAt
+    });
+  } catch (error) {
+    console.error('Error fetching public system lock status:', error);
+    res.status(500).json({ error: 'Failed to fetch system lock status' });
+  }
+});
+
+// Get blocked login attempts during system lock
+router.get('/system-lock/blocked-attempts', authenticateToken, requireRole(['it']), async (req, res) => {
+  try {
+    const { limit = 10, days = 1 } = req.query;
+    
+    // Calculate the date range (last X days)
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(days));
+    
+    // Get audit logs for blocked login attempts during system lock
+    const AuditLog = require('../models/AuditLog');
+    const blockedAttempts = await AuditLog.find({
+      action: 'LOGIN_BLOCKED',
+      createdAt: { $gte: startDate },
+      'details.type': 'SYSTEM_LOCK'
+    })
+    .sort({ createdAt: -1 })
+    .limit(parseInt(limit))
+    .populate('user', 'email firstName lastName role')
+    .lean();
+
+    // Format the response
+    const formattedAttempts = blockedAttempts.map(attempt => ({
+      id: attempt._id,
+      email: attempt.user?.email || attempt.details?.email || 'Unknown',
+      role: attempt.user?.role || attempt.details?.role || 'Unknown',
+      timestamp: attempt.createdAt,
+      ipAddress: attempt.ipAddress || 'Unknown',
+      userAgent: attempt.userAgent || 'Unknown',
+      reason: attempt.details?.reason || 'System lock active'
+    }));
+
+    res.json({
+      blockedAttempts: formattedAttempts,
+      total: formattedAttempts.length,
+      period: `${days} day(s)`
+    });
+  } catch (error) {
+    console.error('Error fetching system lock blocked attempts:', error);
+    res.status(500).json({ error: 'Failed to fetch system lock blocked attempts' });
+  }
+});
+
 module.exports = router;

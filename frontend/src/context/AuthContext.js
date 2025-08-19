@@ -164,6 +164,43 @@ export const AuthProvider = ({ children }) => {
           activatedAt: errorData.activatedAt
         };
       }
+
+      // Handle system lock specially
+      if (errorData?.type === 'SYSTEM_LOCK') {
+        const systemLockMessage = (
+          <div>
+            <div className="font-bold text-red-600 mb-2">🔒 System Locked</div>
+            <div className="text-sm text-gray-700 mb-2">{errorData.message}</div>
+            <div className="text-xs text-red-600 mb-2">
+              Complete system lockdown is in effect
+            </div>
+            {errorData.emergencyContact && (
+              <div className="text-xs text-blue-600">
+                📧 Emergency Contact: {errorData.emergencyContact}
+              </div>
+            )}
+          </div>
+        );
+        
+        toast.error(systemLockMessage, {
+          duration: 12000, // Show longer for system lock (more severe)
+          style: {
+            background: '#fee2e2',
+            border: '1px solid #ef4444',
+            color: '#dc2626',
+            minWidth: '350px'
+          }
+        });
+        
+        return { 
+          success: false, 
+          error: errorData.error,
+          type: 'SYSTEM_LOCK',
+          message: errorData.message,
+          emergencyContact: errorData.emergencyContact,
+          activatedAt: errorData.activatedAt
+        };
+      }
       
       // Handle failed login attempts with attempt count
       if (errorData?.message && errorData.message.includes('Failed login attempt')) {
@@ -209,7 +246,45 @@ export const AuthProvider = ({ children }) => {
       toast.success('Registration successful! You can now login.');
       return { success: true };
     } catch (error) {
-      const message = error.response?.data?.error || 'Registration failed';
+      const errorData = error.response?.data;
+      
+      // Handle system lock specially
+      if (errorData?.type === 'SYSTEM_LOCK') {
+        const systemLockMessage = (
+          <div>
+            <div className="font-bold text-red-600 mb-2">🔒 System Locked</div>
+            <div className="text-sm text-gray-700 mb-2">{errorData.message}</div>
+            <div className="text-xs text-red-600 mb-2">
+              Registration is disabled during system lockdown
+            </div>
+            {errorData.emergencyContact && (
+              <div className="text-xs text-blue-600">
+                📧 Emergency Contact: {errorData.emergencyContact}
+              </div>
+            )}
+          </div>
+        );
+        
+        toast.error(systemLockMessage, {
+          duration: 12000,
+          style: {
+            background: '#fee2e2',
+            border: '1px solid #ef4444',
+            color: '#dc2626',
+            minWidth: '350px'
+          }
+        });
+        
+        return { 
+          success: false, 
+          error: errorData.error,
+          type: 'SYSTEM_LOCK',
+          message: errorData.message,
+          emergencyContact: errorData.emergencyContact
+        };
+      }
+      
+      const message = errorData?.error || 'Registration failed';
       toast.error(message);
       return { success: false, error: message };
     }

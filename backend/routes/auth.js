@@ -59,6 +59,29 @@ router.post('/register', [
       return res.status(400).json({ error: 'Username or email already exists' });
     }
 
+    // Check system lock status
+    const settings = await SystemSettings.getInstance();
+    if (settings.systemLock.enabled) {
+      console.log('🔒 System lock active - blocking registration');
+      await logAudit({ 
+        req, 
+        action: 'REGISTRATION_BLOCKED', 
+        description: `Registration blocked during system lock for ${email}`, 
+        status: 'BLOCKED',
+        details: {
+          type: 'SYSTEM_LOCK',
+          email: email,
+          reason: 'Registration blocked during system lock'
+        }
+      });
+      return res.status(503).json({ 
+        error: 'System Locked', 
+        message: settings.systemLock.reason || 'System is currently locked for security reasons.',
+        type: 'SYSTEM_LOCK',
+        emergencyContact: settings.systemLock.emergencyContact
+      });
+    }
+
     // Validate permissions
     const validPermissions = [
       'view_patients', 'edit_patients', 'delete_patients',
@@ -152,8 +175,43 @@ router.post('/login', [
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Check maintenance mode status
+    // Check system lock status first (highest priority)
     const settings = await SystemSettings.getInstance();
+    console.log(`🔒 System lock check - enabled: ${settings.systemLock.enabled}`);
+    
+    if (settings.systemLock.enabled) {
+      console.log(`🔒 System lock active. User role: ${user.role}, Email: ${user.email}`);
+      
+      // Only allow IT users to login during system lock
+      if (user.role.toLowerCase() !== 'it') {
+        console.log(`❌ Blocking non-IT user during system lock: ${user.email} (role: ${user.role})`);
+        await logAudit({ 
+          req, 
+          action: 'LOGIN_BLOCKED', 
+          description: `Login blocked during system lock for non-IT user ${username} (${user.email})`, 
+          status: 'BLOCKED',
+          details: {
+            type: 'SYSTEM_LOCK',
+            email: user.email,
+            role: user.role,
+            reason: 'Non-IT user attempted to login during system lock'
+          }
+        });
+        return res.status(503).json({ 
+          error: 'System Locked', 
+          message: settings.systemLock.reason || 'System is currently locked for security reasons.',
+          type: 'SYSTEM_LOCK',
+          emergencyContact: settings.systemLock.emergencyContact,
+          activatedAt: settings.systemLock.activatedAt
+        });
+      } else {
+        console.log(`✅ IT user ${user.email} allowed to login during system lock`);
+      }
+    } else {
+      console.log(`✅ No system lock - checking maintenance mode for ${user.email}`);
+    }
+
+    // Check maintenance mode status
     console.log(`🔍 Maintenance mode check - enabled: ${settings.maintenanceMode.enabled}`);
     
     if (settings.maintenanceMode.enabled) {
