@@ -140,7 +140,13 @@ const Users = () => {
       fetchUsers();
     } catch (error) {
       console.error('❌ Error assigning role:', error);
-      alert(error.response?.data?.error || 'Failed to assign role');
+      
+      // Handle specific IT user protection errors
+      if (error.response?.data?.error === 'Cannot change IT user role') {
+        alert('IT users must maintain their IT role for system security reasons.');
+      } else {
+        alert(error.response?.data?.error || 'Failed to assign role');
+      }
     }
   };
 
@@ -176,7 +182,13 @@ const Users = () => {
       fetchUsers();
     } catch (error) {
       console.error('❌ Error toggling status:', error);
-      alert(error.response?.data?.error || 'Failed to toggle status');
+      
+      // Handle specific IT user protection errors
+      if (error.response?.data?.error === 'Cannot deactivate IT users') {
+        alert('IT users are protected from deactivation for system security reasons.');
+      } else {
+        alert(error.response?.data?.error || 'Failed to toggle status');
+      }
     }
   };
 
@@ -190,7 +202,13 @@ const Users = () => {
       fetchUsers();
     } catch (error) {
       console.error('❌ Error deleting user:', error);
-      alert(error.response?.data?.error || 'Failed to delete user');
+      
+      // Handle specific IT user protection errors
+      if (error.response?.data?.error === 'Cannot delete IT users') {
+        alert('IT users are protected from deletion for system security reasons.');
+      } else {
+        alert(error.response?.data?.error || 'Failed to delete user');
+      }
     }
   };
 
@@ -219,7 +237,13 @@ const Users = () => {
       fetchUsers();
     } catch (error) {
       console.error('❌ Error updating user:', error);
-      alert(error.response?.data?.error || 'Failed to update user');
+      
+      // Handle specific IT user protection errors
+      if (error.response?.data?.error === 'Cannot edit IT users') {
+        alert('IT users are protected from editing for system security reasons.');
+      } else {
+        alert(error.response?.data?.error || 'Failed to update user');
+      }
     }
   };
 
@@ -393,8 +417,10 @@ const Users = () => {
                     {user.department || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(user.isActive)}`}>
-                      {user.isActive ? 'Active' : 'Inactive'}
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      user.role === 'it' ? 'bg-orange-100 text-orange-800' : getStatusColor(user.isActive)
+                    }`}>
+                      {user.role === 'it' ? 'Protected' : (user.isActive ? 'Active' : 'Inactive')}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -411,25 +437,36 @@ const Users = () => {
                           <Shield className="h-4 w-4" />
                         </button>
                       )}
-                      <button
-                        onClick={() => handleToggleStatus(user._id, user.isActive)}
-                        className={user.isActive ? "text-red-600 hover:text-red-900" : "text-green-600 hover:text-green-900"}
-                        title={user.isActive ? "Deactivate" : "Activate"}
-                      >
-                        {user.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUser(user._id)}
-                        className="text-red-600 hover:text-red-900"
-                        title="Delete User"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                      <Edit
-                        className="h-4 w-4 text-blue-600 hover:text-blue-900 cursor-pointer"
-                        title="Edit User"
-                        onClick={() => openEditUserModal(user)}
-                      />
+                      {user.role === 'it' ? (
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded-full">
+                            IT Protected
+                          </span>
+                          <Shield className="h-4 w-4 text-orange-600" title="IT users are protected from modification" />
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleToggleStatus(user._id, user.isActive)}
+                            className={user.isActive ? "text-red-600 hover:text-red-900" : "text-green-600 hover:text-green-900"}
+                            title={user.isActive ? "Deactivate" : "Activate"}
+                          >
+                            {user.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user._id)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Delete User"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                          <Edit
+                            className="h-4 w-4 text-blue-600 hover:text-blue-900 cursor-pointer"
+                            title="Edit User"
+                            onClick={() => openEditUserModal(user)}
+                          />
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

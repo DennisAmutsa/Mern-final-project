@@ -264,8 +264,8 @@ router.post('/login', [
       });
     }
 
-    // Check if account is locked due to failed attempts
-    if (user.accountLocked) {
+    // Check if account is locked due to failed attempts - EXCEPT for IT users
+    if (user.accountLocked && user.role.toLowerCase() !== 'it') {
       await logAudit({ 
         req, 
         action: 'LOGIN_BLOCKED', 
@@ -281,6 +281,24 @@ router.post('/login', [
       });
     }
 
+    // For IT users, unlock their account if it was previously locked
+    if (user.accountLocked && user.role.toLowerCase() === 'it') {
+      user.accountLocked = false;
+      user.accountLockedAt = null;
+      user.accountLockedBy = null;
+      user.failedLoginAttempts = 0;
+      user.lastFailedLogin = null;
+      await user.save();
+      
+      await logAudit({ 
+        req, 
+        action: 'ACCOUNT_UNLOCKED', 
+        description: `IT user account automatically unlocked: ${user.email}`, 
+        status: 'SUCCESS',
+        details: `IT user ${user.email} account unlocked automatically during login attempt`
+      });
+    }
+
     // Verify password
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
@@ -288,8 +306,8 @@ router.post('/login', [
       user.failedLoginAttempts += 1;
       user.lastFailedLogin = new Date();
       
-      // Check if account should be locked (after 4 failed attempts)
-      if (user.failedLoginAttempts >= 4) {
+      // Check if account should be locked (after 4 failed attempts) - EXCEPT for IT users
+      if (user.failedLoginAttempts >= 4 && user.role.toLowerCase() !== 'it') {
         user.accountLocked = true;
         user.accountLockedAt = new Date();
         user.accountLockedBy = 'system';
@@ -314,17 +332,23 @@ router.post('/login', [
       
       await user.save();
       
+      // Different message for IT users vs regular users
+      const maxAttempts = user.role.toLowerCase() === 'it' ? 'Unlimited' : '4';
+      const lockMessage = user.role.toLowerCase() === 'it' 
+        ? `Failed login attempt ${user.failedLoginAttempts}. IT accounts are protected from locking.`
+        : `Failed login attempt ${user.failedLoginAttempts} of 4. Account will be locked after 4 failed attempts.`;
+      
       await logAudit({ 
         req, 
         action: 'LOGIN_FAILED', 
         description: `Failed login attempt for user: ${user.email}`, 
         status: 'FAILED',
-        details: `User ${user.email} entered incorrect password (attempt ${user.failedLoginAttempts}/4)`
+        details: `User ${user.email} entered incorrect password (attempt ${user.failedLoginAttempts}/${maxAttempts})`
       });
       
       return res.status(401).json({ 
         error: 'Invalid credentials',
-        message: `Failed login attempt ${user.failedLoginAttempts} of 4. Account will be locked after 4 failed attempts.`
+        message: lockMessage
       });
     }
 
@@ -634,6 +658,21 @@ router.put('/users/:userId', authenticateToken, requireRole('admin'), [
       return res.status(400).json({ errors: errors.array() });
     }
     const { userId } = req.params;
+    
+    // First, get the user to check their current role
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Prevent editing IT users
+    if (existingUser.role === 'it') {
+      return res.status(403).json({ 
+        error: 'Cannot edit IT users',
+        message: 'IT users are protected from editing for system security reasons.'
+      });
+    }
+
     const updateData = { ...req.body };
     // Prevent username change
     delete updateData.username;
@@ -690,17 +729,12 @@ router.put('/users/:userId', authenticateToken, requireRole('admin'), [
     // Debug log
     console.log('Edit userId:', userId);
     console.log('Edit updateData:', updateData);
-    const foundUser = await User.findById(userId);
-    console.log('Direct find result:', foundUser);
     const user = await User.findByIdAndUpdate(
       userId,
       updateData,
       { new: true, runValidators: true }
     ).select('-password');
-    if (!user) {
-      console.error('User not found for update:', userId);
-      return res.status(404).json({ error: 'User not found' });
-    }
+    
     await logAudit({ req, action: 'USER_UPDATE', description: `User ${userId} updated by ${req.user.email}`, status: 'SUCCESS', details: updateData });
     res.json({
       message: 'User updated successfully',
@@ -726,6 +760,20 @@ router.put('/users/:userId/assign-role', authenticateToken, requireRole('admin')
 
     const { role, department, employeeId } = req.body;
     const { userId } = req.params;
+
+    // First, get the user to check their current role
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Prevent changing IT users to non-IT roles for security
+    if (existingUser.role === 'it' && role !== 'it') {
+      return res.status(403).json({ 
+        error: 'Cannot change IT user role',
+        message: 'IT users must maintain their IT role for system security reasons.'
+      });
+    }
 
     // Set permissions based on role
     let permissions = [];
@@ -793,10 +841,6 @@ router.put('/users/:userId/assign-role', authenticateToken, requireRole('admin')
       { new: true, runValidators: true }
     ).select('-password');
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
     res.json({
       message: 'User role and department assigned successfully',
       user
@@ -814,15 +858,25 @@ router.put('/users/:userId/toggle-status', authenticateToken, requireRole('admin
     const { userId } = req.params;
     const { isActive } = req.body;
 
+    // First, get the user to check their current role
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Prevent deactivation of IT users
+    if (!isActive && existingUser.role === 'it') {
+      return res.status(403).json({ 
+        error: 'Cannot deactivate IT users',
+        message: 'IT users are protected from deactivation for system security reasons.'
+      });
+    }
+
     const user = await User.findByIdAndUpdate(
       userId,
       { isActive },
       { new: true, runValidators: true }
     ).select('-password');
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     res.json({
       message: `User ${isActive ? 'activated' : 'deactivated'} successfully`,
@@ -840,10 +894,21 @@ router.delete('/users/:userId', authenticateToken, requireRole('admin'), async (
   try {
     const { userId } = req.params;
 
-    const user = await User.findByIdAndDelete(userId);
-    if (!user) {
+    // First, get the user to check their current role
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    // Prevent deletion of IT users
+    if (existingUser.role === 'it') {
+      return res.status(403).json({ 
+        error: 'Cannot delete IT users',
+        message: 'IT users are protected from deletion for system security reasons.'
+      });
+    }
+
+    const user = await User.findByIdAndDelete(userId);
     await logAudit({ req, action: 'USER_DELETE', description: `User ${userId} deleted by ${req.user.email}`, status: 'SUCCESS' });
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
@@ -879,13 +944,27 @@ router.put('/users/profile/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const update = req.body;
+    
+    // First, get the user to check their current role
+    const existingUser = await User.findById(id);
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Prevent editing IT users
+    if (existingUser.role === 'it') {
+      return res.status(403).json({ 
+        error: 'Cannot edit IT users',
+        message: 'IT users are protected from editing for system security reasons.'
+      });
+    }
+    
     // Prevent email change to an existing email
     if (update.email) {
       const existing = await User.findOne({ email: update.email, _id: { $ne: id } });
       if (existing) return res.status(400).json({ error: 'Email already exists' });
     }
     const user = await User.findByIdAndUpdate(id, update, { new: true, runValidators: true }).select('-password');
-    if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -555,15 +555,25 @@ router.patch('/users/:userId/status', authenticateToken, requireRole(['it']), as
     const { userId } = req.params;
     const { isActive } = req.body;
 
+    // First, get the user to check their current role
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Prevent suspension of IT users
+    if (!isActive && existingUser.role === 'it') {
+      return res.status(403).json({ 
+        error: 'Cannot suspend IT users',
+        message: 'IT users are protected from suspension for system security reasons.'
+      });
+    }
+
     const user = await User.findByIdAndUpdate(
       userId,
       { isActive },
       { new: true }
     ).select('-password');
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Log the action for audit trail
     const action = isActive ? 'USER_ACTIVATED' : 'USER_SUSPENDED';
@@ -606,15 +616,25 @@ router.patch('/users/:userId/role', authenticateToken, requireRole(['it']), asyn
     const { userId } = req.params;
     const { role } = req.body;
 
+    // First, get the user to check their current role
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Prevent changing IT users to non-IT roles for security
+    if (existingUser.role === 'it' && role !== 'it') {
+      return res.status(403).json({ 
+        error: 'Cannot change IT user role',
+        message: 'IT users must maintain their IT role for system security reasons.'
+      });
+    }
+
     const user = await User.findByIdAndUpdate(
       userId,
       { role },
       { new: true }
     ).select('-password');
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     res.json({ 
       message: 'User role updated successfully',
@@ -631,10 +651,21 @@ router.delete('/users/:userId', authenticateToken, requireRole(['it']), async (r
   try {
     const { userId } = req.params;
 
-    const user = await User.findByIdAndDelete(userId);
-    if (!user) {
+    // First, get the user to check their current role
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    // Prevent deletion of IT users
+    if (existingUser.role === 'it') {
+      return res.status(403).json({ 
+        error: 'Cannot delete IT users',
+        message: 'IT users are protected from deletion for system security reasons.'
+      });
+    }
+
+    const user = await User.findByIdAndDelete(userId);
 
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
@@ -1541,30 +1572,38 @@ router.get('/system-lock/status', authenticateToken, requireRole(['it']), async 
 // Enable system lock
 router.post('/system-lock/enable', authenticateToken, requireRole(['it']), async (req, res) => {
   try {
-    const { reason, emergencyContact } = req.body;
-    const settings = await SystemSettings.getInstance();
+    const { reason } = req.body;
     
-    settings.systemLock.enabled = true;
-    settings.systemLock.activatedAt = new Date();
-    settings.systemLock.activatedBy = req.user._id;
-    settings.systemLock.reason = reason || 'System is currently locked for security reasons.';
-    settings.systemLock.emergencyContact = emergencyContact || 'epicedgecreative@gmail.com';
-    settings.lastUpdated = new Date();
+    let settings = await SystemSettings.findOne();
+    if (!settings) {
+      settings = new SystemSettings();
+    }
+    
+    // Always use the fixed emergency contact
+    settings.systemLock = {
+      enabled: true,
+      activatedAt: new Date(),
+      activatedBy: req.user.id,
+      reason: reason || 'System is currently locked for security reasons.',
+      emergencyContact: 'epicedgecreative@gmail.com' // Always fixed
+    };
     
     await settings.save();
-
-    // Log the system lock activation
-    await logAudit({
-      req,
-      action: 'SYSTEM_LOCK_ENABLED',
-      description: `System lock enabled by IT administrator: ${req.user.email}`,
-      status: 'SUCCESS',
-      details: `System lock activated with reason: "${settings.systemLock.reason}"`
+    
+    // Log the action
+    await AuditLog.create({
+      action: 'system_lock_enabled',
+      user: req.user.id,
+      details: {
+        reason: reason || 'System is currently locked for security reasons.',
+        emergencyContact: 'epicedgecreative@gmail.com'
+      }
     });
-
-    res.json({
+    
+    res.json({ 
+      success: true, 
       message: 'System lock enabled successfully',
-      systemLock: settings.systemLock
+      emergencyContact: 'epicedgecreative@gmail.com'
     });
   } catch (error) {
     console.error('Error enabling system lock:', error);
@@ -1575,29 +1614,35 @@ router.post('/system-lock/enable', authenticateToken, requireRole(['it']), async
 // Disable system lock
 router.post('/system-lock/disable', authenticateToken, requireRole(['it']), async (req, res) => {
   try {
-    const settings = await SystemSettings.getInstance();
+    let settings = await SystemSettings.findOne();
+    if (!settings) {
+      settings = new SystemSettings();
+    }
     
-    settings.systemLock.enabled = false;
-    settings.systemLock.activatedAt = null;
-    settings.systemLock.activatedBy = null;
-    settings.systemLock.reason = '';
-    settings.systemLock.emergencyContact = 'epicedgecreative@gmail.com';
-    settings.lastUpdated = new Date();
+    // Disable system lock but maintain the fixed emergency contact
+    settings.systemLock = {
+      enabled: false,
+      deactivatedAt: new Date(),
+      deactivatedBy: req.user.id,
+      reason: '',
+      emergencyContact: 'epicedgecreative@gmail.com' // Always maintain the fixed contact
+    };
     
     await settings.save();
-
-    // Log the system lock deactivation
-    await logAudit({
-      req,
-      action: 'SYSTEM_LOCK_DISABLED',
-      description: `System lock disabled by IT administrator: ${req.user.email}`,
-      status: 'SUCCESS',
-      details: 'System lock deactivated'
+    
+    // Log the action
+    await AuditLog.create({
+      action: 'system_lock_disabled',
+      user: req.user.id,
+      details: {
+        deactivatedBy: req.user.email
+      }
     });
-
-    res.json({
+    
+    res.json({ 
+      success: true, 
       message: 'System lock disabled successfully',
-      systemLock: settings.systemLock
+      emergencyContact: 'epicedgecreative@gmail.com'
     });
   } catch (error) {
     console.error('Error disabling system lock:', error);

@@ -451,10 +451,23 @@ const ITDashboard = () => {
     try {
       setSystemLockLoading(true);
       const response = await apiClient.get('/api/it/system-lock/status');
-      setSystemLockStatus(response.data.systemLock);
+      
+      // Ensure we have a valid response with the expected structure
+      if (response.data && response.data.systemLock) {
+        setSystemLockStatus(response.data.systemLock);
+      } else {
+        // Set default values if response is invalid
+        setSystemLockStatus({
+          enabled: false,
+          reason: '',
+          emergencyContact: '',
+          activatedAt: null,
+          activatedBy: null
+        });
+      }
       
       // Fetch blocked login attempts if system lock is enabled
-      if (response.data.systemLock.enabled) {
+      if (response.data?.systemLock?.enabled) {
         await fetchSystemLockBlockedAttempts();
       } else {
         setSystemLockBlockedAttempts([]);
@@ -462,6 +475,16 @@ const ITDashboard = () => {
     } catch (error) {
       console.error('Error fetching system lock status:', error);
       toast.error('Failed to load system lock status');
+      
+      // Set default values on error to prevent undefined access
+      setSystemLockStatus({
+        enabled: false,
+        reason: '',
+        emergencyContact: '',
+        activatedAt: null,
+        activatedBy: null
+      });
+      setSystemLockBlockedAttempts([]);
     } finally {
       setSystemLockLoading(false);
     }
@@ -570,7 +593,27 @@ const ITDashboard = () => {
       }
     } catch (error) {
       console.error('Error performing user action:', error);
-      toast.error(error.response?.data?.error || 'Failed to perform action');
+      
+      // Handle specific IT user protection errors
+      if (error.response?.data?.error === 'Cannot suspend IT users') {
+        toast.error('IT users are protected from suspension for system security', {
+          duration: 5000,
+          icon: '🛡️'
+        });
+      } else if (error.response?.data?.error === 'Cannot delete IT users') {
+        toast.error('IT users are protected from deletion for system security', {
+          duration: 5000,
+          icon: '🛡️'
+        });
+      } else if (error.response?.data?.error === 'Cannot change IT user role') {
+        toast.error('IT users must maintain their IT role for system security', {
+          duration: 5000,
+          icon: '🛡️'
+        });
+      } else {
+        toast.error(error.response?.data?.error || 'Failed to perform action');
+      }
+      
       // Track error
       trackITDashboardEvent.errorOccurred('user_action', error.message, getCurrentView());
     }
@@ -2400,215 +2443,230 @@ const ITDashboard = () => {
       {/* System Lock Tab */}
       {getCurrentView() === 'system-lock' && (
         <div className="space-y-6">
-          {/* Header */}
-          <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl shadow-lg border border-red-200">
-            <div className="px-6 py-4 border-b border-red-200 bg-gradient-to-r from-red-600 to-red-700 rounded-t-xl">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-white bg-opacity-20 rounded-lg">
-                  <Lock className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-white">System Lock Management</h3>
-              </div>
+          {/* Show loading state if systemLockStatus is not yet loaded */}
+          {!systemLockStatus && systemLockLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading system lock status...</p>
             </div>
-            <div className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-sm text-red-700 mb-1">
-                    {systemLockLoading ? 'Loading...' : `System Lock: ${systemLockStatus.enabled ? 'ENABLED' : 'DISABLED'}`}
-                  </p>
-                  <p className="text-xs text-red-600">
-                    Complete system lockdown - no login or registration except IT users
-                  </p>
-                </div>
-                <button
-                  onClick={fetchSystemLockStatus}
-                  disabled={systemLockLoading}
-                  className="flex items-center space-x-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-sm disabled:opacity-50"
-                >
-                  <RefreshCw className={`h-4 w-4 ${systemLockLoading ? 'animate-spin' : ''}`} />
-                  <span>Refresh</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* System Lock Status */}
-          <div className="bg-white rounded-lg shadow p-6">
-            {systemLockLoading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading system lock status...</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Current Status */}
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          ) : (
+            <>
+              {/* Header */}
+              <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl shadow-lg border border-red-200">
+                <div className="px-6 py-4 border-b border-red-200 bg-gradient-to-r from-red-600 to-red-700 rounded-t-xl">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-4 h-4 rounded-full ${systemLockStatus.enabled ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
+                    <div className="p-2 bg-white bg-opacity-20 rounded-lg">
+                      <Lock className="h-6 w-6 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white">System Lock Management</h3>
+                  </div>
+                </div>
+                <div className="p-4 sm:p-6">
+                  <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h4 className="font-medium text-gray-900">
-                        Current Status: {systemLockStatus.enabled ? 'System Locked' : 'System Unlocked'}
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        {systemLockStatus.enabled 
-                          ? 'Complete lockdown - no login or registration except IT users'
-                          : 'System is accessible to all users'
-                        }
+                      <p className="text-sm text-red-700 mb-1">
+                        {systemLockLoading ? 'Loading...' : `System Lock: ${systemLockStatus?.enabled ? 'ENABLED' : 'DISABLED'}`}
+                      </p>
+                      <p className="text-xs text-red-600">
+                        Complete system lockdown - no login or registration except IT users
                       </p>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
-                      systemLockStatus.enabled 
-                        ? 'bg-red-100 text-red-800' 
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {systemLockStatus.enabled ? 'LOCKED' : 'UNLOCKED'}
-                    </span>
+                    <button
+                      onClick={fetchSystemLockStatus}
+                      disabled={systemLockLoading}
+                      className="flex items-center space-x-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-sm disabled:opacity-50"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${systemLockLoading ? 'animate-spin' : ''}`} />
+                      <span>Refresh</span>
+                    </button>
                   </div>
                 </div>
+              </div>
 
-                {/* System Lock Details */}
-                {systemLockStatus.enabled && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <h4 className="font-medium text-red-800 mb-3">System Lock Details</h4>
-                    <div className="space-y-2 text-sm">
-                      {systemLockStatus.reason && (
+              {/* System Lock Status */}
+              <div className="bg-white rounded-lg shadow p-6">
+                {systemLockLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading system lock status...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Current Status */}
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-4 h-4 rounded-full ${systemLockStatus?.enabled ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
                         <div>
-                          <span className="font-medium text-red-700">Reason:</span>
-                          <p className="text-red-600 mt-1">{systemLockStatus.reason}</p>
+                          <h4 className="font-medium text-gray-900">
+                            Current Status: {systemLockStatus?.enabled ? 'System Locked' : 'System Unlocked'}
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            {systemLockStatus?.enabled 
+                              ? 'Complete lockdown - no login or registration except IT users'
+                              : 'System is accessible to all users'
+                            }
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
+                          systemLockStatus?.enabled 
+                            ? 'bg-red-100 text-red-800' 
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {systemLockStatus?.enabled ? 'LOCKED' : 'UNLOCKED'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* System Lock Details */}
+                    {systemLockStatus?.enabled && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <h4 className="font-medium text-red-800 mb-3">System Lock Details</h4>
+                        <div className="space-y-2 text-sm">
+                          {systemLockStatus?.reason && (
+                            <div>
+                              <span className="font-medium text-red-700">Reason:</span>
+                              <p className="text-red-600 mt-1">{systemLockStatus.reason}</p>
+                            </div>
+                          )}
+                          {systemLockStatus?.emergencyContact && (
+                            <div>
+                              <span className="font-medium text-red-700">Emergency Contact:</span>
+                              <div className="flex items-center mt-1">
+                                <span className="text-red-600">{systemLockStatus.emergencyContact}</span>
+                                <span className="ml-2 text-xs bg-red-200 text-red-800 px-2 py-1 rounded">Fixed</span>
+                              </div>
+                            </div>
+                          )}
+                          {systemLockStatus?.activatedAt && (
+                            <div>
+                              <span className="font-medium text-red-700">Activated:</span>
+                              <p className="text-red-600 mt-1">
+                                {new Date(systemLockStatus.activatedAt).toLocaleString()}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* System Lock Control */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                      <h4 className="text-lg font-bold text-red-600 mb-4">System Lock Control</h4>
+                      
+                      {!systemLockStatus?.enabled ? (
+                        <div className="space-y-4">
+                          <div>
+                            <label htmlFor="systemLockReason" className="block text-sm font-medium text-gray-700 mb-2">
+                              Reason for System Lock
+                            </label>
+                            <input
+                              type="text"
+                              id="systemLockReason"
+                              placeholder="Reason for system lock"
+                              value={systemLockForm.reason || ''}
+                              onChange={(e) => setSystemLockForm(prev => ({ ...prev, reason: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label htmlFor="emergencyContact" className="block text-sm font-medium text-gray-700 mb-2">
+                              Emergency Contact Email
+                            </label>
+                            <input
+                              type="email"
+                              id="emergencyContact"
+                              value="epicedgecreative@gmail.com"
+                              disabled
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 cursor-not-allowed"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              This emergency contact is permanently set and cannot be changed
+                            </p>
+                          </div>
+                          
+                          <button
+                            onClick={() => {
+                              const reason = systemLockForm.reason || 'System is currently locked for security reasons.';
+                              const emergencyContact = 'epicedgecreative@gmail.com';
+                              handleSystemLockToggle(true, reason, emergencyContact);
+                              setSystemLockForm({ reason: '', emergencyContact: '' });
+                            }}
+                            disabled={systemLockLoading}
+                            className="w-full px-4 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 transition-colors font-medium"
+                          >
+                            Enable System Lock
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                            <div className="flex items-center space-x-3">
+                              <Lock className="h-5 w-5 text-red-600" />
+                              <div>
+                                <h5 className="font-medium text-red-800">System Lock Active</h5>
+                                <p className="text-sm text-red-700">Complete lockdown - only IT users can access</p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <button
+                            onClick={() => handleSystemLockToggle(false)}
+                            disabled={systemLockLoading}
+                            className="w-full px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 transition-colors font-medium"
+                          >
+                            Disable System Lock
+                          </button>
                         </div>
                       )}
-                      {systemLockStatus.emergencyContact && (
-                        <div>
-                          <span className="font-medium text-red-700">Emergency Contact:</span>
-                          <span className="text-red-600 ml-2">{systemLockStatus.emergencyContact}</span>
+                    </div>
+
+                    {/* Recent Blocked Login Attempts */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                      <h4 className="text-lg font-bold text-red-600 mb-4">
+                        Recent Blocked Login Attempts ({systemLockBlockedAttempts.length})
+                      </h4>
+                      {systemLockBlockedAttempts.length === 0 ? (
+                        <p className="text-gray-600">No blocked login attempts during system lock.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {systemLockBlockedAttempts.slice(0, 5).map((attempt, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">{attempt.email}</p>
+                                <p className="text-xs text-gray-500">{attempt.role} • {new Date(attempt.timestamp).toLocaleString()}</p>
+                                {attempt.reason && (
+                                  <p className="text-xs text-gray-500 mt-1">Reason: {attempt.reason}</p>
+                                )}
+                              </div>
+                              <span className="text-xs text-red-600 font-medium">BLOCKED</span>
+                            </div>
+                          ))}
                         </div>
                       )}
-                      {systemLockStatus.activatedAt && (
+                    </div>
+
+                    {/* Warning */}
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="flex items-start space-x-3">
+                        <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
                         <div>
-                          <span className="font-medium text-red-700">Activated At:</span>
-                          <span className="text-red-600 ml-2">
-                            {new Date(systemLockStatus.activatedAt).toLocaleString()}
-                          </span>
+                          <h4 className="font-medium text-red-800">Critical Notice</h4>
+                          <p className="text-sm text-red-700 mt-1">
+                            When system lock is enabled, NO users (including administrators) can login or register 
+                            except IT users. This is a complete system lockdown for emergency situations only. 
+                            Use with extreme caution.
+                          </p>
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
                 )}
-
-                {/* System Lock Control */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                  <h4 className="text-lg font-bold text-red-600 mb-4">System Lock Control</h4>
-                  
-                  {!systemLockStatus.enabled ? (
-                    <div className="space-y-4">
-                      <div>
-                        <label htmlFor="systemLockReason" className="block text-sm font-medium text-gray-700 mb-2">
-                          Reason for System Lock
-                        </label>
-                        <input
-                          type="text"
-                          id="systemLockReason"
-                          placeholder="Reason for system lock"
-                          value={systemLockForm.reason || ''}
-                          onChange={(e) => setSystemLockForm(prev => ({ ...prev, reason: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label htmlFor="emergencyContact" className="block text-sm font-medium text-gray-700 mb-2">
-                          Emergency Contact Email
-                        </label>
-                        <input
-                          type="email"
-                          id="emergencyContact"
-                          placeholder="Emergency contact email"
-                          value={systemLockForm.emergencyContact || ''}
-                          onChange={(e) => setSystemLockForm(prev => ({ ...prev, emergencyContact: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        />
-                      </div>
-                      
-                      <button
-                        onClick={() => {
-                          const reason = systemLockForm.reason || 'System is currently locked for security reasons.';
-                          const emergencyContact = systemLockForm.emergencyContact || 'epicedgecreative@gmail.com';
-                          handleSystemLockToggle(true, reason, emergencyContact);
-                          setSystemLockForm({ reason: '', emergencyContact: '' });
-                        }}
-                        disabled={systemLockLoading}
-                        className="w-full px-4 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 transition-colors font-medium"
-                      >
-                        Enable System Lock
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                        <div className="flex items-center space-x-3">
-                          <Lock className="h-5 w-5 text-red-600" />
-                          <div>
-                            <h5 className="font-medium text-red-800">System Lock Active</h5>
-                            <p className="text-sm text-red-700">Complete lockdown - only IT users can access</p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <button
-                        onClick={() => handleSystemLockToggle(false)}
-                        disabled={systemLockLoading}
-                        className="w-full px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 transition-colors font-medium"
-                      >
-                        Disable System Lock
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Recent Blocked Login Attempts */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                  <h4 className="text-lg font-bold text-red-600 mb-4">
-                    Recent Blocked Login Attempts ({systemLockBlockedAttempts.length})
-                  </h4>
-                  {systemLockBlockedAttempts.length === 0 ? (
-                    <p className="text-gray-600">No blocked login attempts during system lock.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {systemLockBlockedAttempts.slice(0, 5).map((attempt, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{attempt.email}</p>
-                            <p className="text-xs text-gray-500">{attempt.role} • {new Date(attempt.timestamp).toLocaleString()}</p>
-                            {attempt.reason && (
-                              <p className="text-xs text-gray-500 mt-1">Reason: {attempt.reason}</p>
-                            )}
-                          </div>
-                          <span className="text-xs text-red-600 font-medium">BLOCKED</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Warning */}
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-red-800">Critical Notice</h4>
-                      <p className="text-sm text-red-700 mt-1">
-                        When system lock is enabled, NO users (including administrators) can login or register 
-                        except IT users. This is a complete system lockdown for emergency situations only. 
-                        Use with extreme caution.
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
       )}
 
