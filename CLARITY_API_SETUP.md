@@ -43,7 +43,6 @@
 ### **Step 2: Add Token to Environment**
 
 **Option A: Environment Variable (Recommended)**
-```bash
 # Create .env file in frontend directory
 REACT_APP_CLARITY_JWT_TOKEN=your_jwt_token_here
 ```

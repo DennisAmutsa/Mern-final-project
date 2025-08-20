@@ -175,7 +175,7 @@ const ITDashboard = () => {
   // User details modal state
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserDetailsModal, setShowUserDetailsModal] = useState(false);
-  
+
   const getCurrentView = () => {
     const path = location.pathname;
     let view = 'overview';
@@ -566,7 +566,7 @@ const ITDashboard = () => {
       if (getCurrentView() === 'suspended-accounts') {
         fetchSuspendedAccounts(suspendedAccountsPagination.currentPage);
       } else {
-        fetchUsers(userPagination.currentPage);
+      fetchUsers(userPagination.currentPage);
       }
     } catch (error) {
       console.error('Error performing user action:', error);
