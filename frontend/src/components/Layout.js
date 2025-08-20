@@ -169,6 +169,7 @@ const Layout = () => {
           { name: 'Support Tickets', href: '/it-dashboard/support', icon: MessageSquare },
           { name: 'System Metrics', href: '/it-dashboard/metrics', icon: BarChart3 },
           { name: 'Recent Activity', href: '/it-dashboard/activity', icon: Clock },
+          { name: 'Analytics', href: '/it-dashboard/analytics', icon: TrendingUp },
         ];
       case 'user':
       case 'patient':

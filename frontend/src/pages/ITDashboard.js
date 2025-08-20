@@ -48,6 +48,7 @@ import {
   trackSystemHealth,
   initializeClarity 
 } from '../utils/clarity';
+import ClarityAnalytics from '../components/ClarityAnalytics';
 
 const ITDashboard = () => {
   const { user } = useAuth();
@@ -189,6 +190,7 @@ const ITDashboard = () => {
     else if (path.includes('/locked-accounts')) view = 'locked-accounts';
     else if (path.includes('/maintenance')) view = 'maintenance';
     else if (path.includes('/system-lock')) view = 'system-lock';
+    else if (path.includes('/analytics')) view = 'analytics';
     
     // Track dashboard section access
     trackFeatureUsage('dashboard_navigation', 'section_accessed', { section: view });
@@ -2584,6 +2586,11 @@ const ITDashboard = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* Analytics Tab */}
+      {getCurrentView() === 'analytics' && (
+        <ClarityAnalytics />
       )}
 
       {/* Suspended Accounts Tab */}

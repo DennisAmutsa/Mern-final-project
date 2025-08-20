@@ -255,14 +255,15 @@ function AppRoutes() {
         <Route index element={<ITDashboard />} />
         <Route path="health" element={<ITDashboard />} />
                             <Route path="users" element={<ITDashboard />} />
-                    <Route path="suspended-accounts" element={<ITDashboard />} />
-                    <Route path="locked-accounts" element={<ITDashboard />} />
-                    <Route path="maintenance" element={<ITDashboard />} />
-                    <Route path="system-lock" element={<ITDashboard />} />
-        <Route path="security" element={<ITDashboard />} />
-        <Route path="support" element={<ITDashboard />} />
-        <Route path="metrics" element={<ITDashboard />} />
-        <Route path="activity" element={<ITDashboard />} />
+                                <Route path="suspended-accounts" element={<ITDashboard />} />
+            <Route path="locked-accounts" element={<ITDashboard />} />
+            <Route path="maintenance" element={<ITDashboard />} />
+            <Route path="system-lock" element={<ITDashboard />} />
+            <Route path="security" element={<ITDashboard />} />
+            <Route path="support" element={<ITDashboard />} />
+            <Route path="metrics" element={<ITDashboard />} />
+            <Route path="activity" element={<ITDashboard />} />
+            <Route path="analytics" element={<ITDashboard />} />
       </Route>
 
       {/* Catch all route */}
