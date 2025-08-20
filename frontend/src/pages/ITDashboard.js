@@ -1146,7 +1146,7 @@ const ITDashboard = () => {
                                </span>
                              </td>
                              <td className="px-6 py-4 whitespace-nowrap">
-                               <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                               <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                                  user.isActive 
                                    ? 'bg-green-100 text-green-800' 
                                    : 'bg-red-100 text-red-800'
@@ -1154,7 +1154,7 @@ const ITDashboard = () => {
                                  {user.isActive ? (
                                    <>
                                      <UserCheck className="h-3 w-3 mr-1" />
-                                     Active
+                                     {user.role === 'it' ? 'Protected' : 'Active'}
                                    </>
                                  ) : (
                                    <>
@@ -1163,6 +1163,12 @@ const ITDashboard = () => {
                                    </>
                                  )}
                                </span>
+                               {user.role === 'it' && (
+                                 <div className="mt-1 text-xs text-blue-600">
+                                   <Shield className="h-3 w-3 inline mr-1" />
+                                   IT Protected
+                                 </div>
+                               )}
                              </td>
                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                {new Date(user.createdAt).toLocaleDateString()}
@@ -1170,14 +1176,16 @@ const ITDashboard = () => {
                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                <div className="flex space-x-2">
                                  {user.isActive ? (
-                                   <button
-                                     onClick={() => handleUserAction(user._id, 'deactivate')}
-                                     className="text-red-600 hover:text-red-900 flex items-center"
-                                     title="Deactivate User"
-                                   >
-                                     <UserX className="h-4 w-4 mr-1" />
-                                     Suspend
-                                   </button>
+                                   user.role !== 'it' && (
+                                     <button
+                                       onClick={() => handleUserAction(user._id, 'deactivate')}
+                                       className="text-red-600 hover:text-red-900 flex items-center"
+                                       title="Deactivate User"
+                                     >
+                                       <UserX className="h-4 w-4 mr-1" />
+                                       Suspend
+                                     </button>
+                                   )
                                  ) : (
                                    <button
                                      onClick={() => handleUserAction(user._id, 'activate')}
@@ -1212,17 +1220,19 @@ const ITDashboard = () => {
                                    <option value="it">IT</option>
                                    <option value="user">User</option>
                                  </select>
-                                 <button
-                                   onClick={() => {
-                                     if (window.confirm('Are you sure you want to delete this user?')) {
-                                       handleUserAction(user._id, 'delete');
-                                     }
-                                   }}
-                                   className="text-red-600 hover:text-red-900"
-                                   title="Delete User"
-                                 >
-                                   <XCircle className="h-4 w-4" />
-                                 </button>
+                                 {user.role !== 'it' && (
+                                   <button
+                                     onClick={() => {
+                                       if (window.confirm('Are you sure you want to delete this user?')) {
+                                         handleUserAction(user._id, 'delete');
+                                       }
+                                     }}
+                                     className="text-red-600 hover:text-red-900"
+                                     title="Delete User"
+                                   >
+                                     <XCircle className="h-4 w-4" />
+                                   </button>
+                                 )}
                                </div>
                              </td>
                            </tr>
@@ -1277,7 +1287,7 @@ const ITDashboard = () => {
                              {user.isActive ? (
                                <>
                                  <UserCheck className="h-3 w-3 mr-1" />
-                                 Active
+                                 {user.role === 'it' ? 'Protected' : 'Active'}
                                </>
                              ) : (
                                <>
@@ -1286,20 +1296,28 @@ const ITDashboard = () => {
                                </>
                              )}
                            </span>
+                           {user.role === 'it' && (
+                             <div className="mt-1 text-xs text-blue-600">
+                               <Shield className="h-3 w-3 inline mr-1" />
+                               IT Protected
+                             </div>
+                           )}
             </div>
 
                          {/* Actions */}
                          <div className="flex flex-col sm:flex-row gap-2">
                            <div className="flex gap-2">
                              {user.isActive ? (
-                               <button
-                                 onClick={() => handleUserAction(user._id, 'deactivate')}
-                                 className="flex-1 sm:flex-none flex items-center justify-center px-3 py-2 text-sm text-red-600 hover:text-red-900 border border-red-200 rounded-md hover:bg-red-50 transition-colors"
-                                 title="Deactivate User"
-                               >
-                                 <UserX className="h-4 w-4 mr-1" />
-                                 Suspend
-                               </button>
+                               user.role !== 'it' && (
+                                 <button
+                                   onClick={() => handleUserAction(user._id, 'deactivate')}
+                                   className="flex-1 sm:flex-none flex items-center justify-center px-3 py-2 text-sm text-red-600 hover:text-red-900 border border-red-200 rounded-md hover:bg-red-50 transition-colors"
+                                   title="Deactivate User"
+                                 >
+                                   <UserX className="h-4 w-4 mr-1" />
+                                   Suspend
+                                 </button>
+                               )
                              ) : (
                                <button
                                  onClick={() => handleUserAction(user._id, 'activate')}
@@ -1320,17 +1338,19 @@ const ITDashboard = () => {
                                  Unlock
                                </button>
                              )}
-                             <button
-                               onClick={() => {
-                                 if (window.confirm('Are you sure you want to delete this user?')) {
-                                   handleUserAction(user._id, 'delete');
-                                 }
-                               }}
-                               className="px-3 py-2 text-sm text-red-600 hover:text-red-900 border border-red-200 rounded-md hover:bg-red-50 transition-colors"
-                               title="Delete User"
-                             >
-                               <XCircle className="h-4 w-4" />
-                             </button>
+                             {user.role !== 'it' && (
+                               <button
+                                 onClick={() => {
+                                   if (window.confirm('Are you sure you want to delete this user?')) {
+                                     handleUserAction(user._id, 'delete');
+                                   }
+                                 }}
+                                 className="px-3 py-2 text-sm text-red-600 hover:text-red-900 border border-red-200 rounded-md hover:bg-red-50 transition-colors"
+                                 title="Delete User"
+                               >
+                                 <XCircle className="h-4 w-4" />
+                               </button>
+                             )}
                            </div>
                            <select
                              className="flex-1 sm:flex-none text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -2178,6 +2198,10 @@ const ITDashboard = () => {
                   <p className="text-xs text-orange-600">
                     Control system-wide maintenance mode to restrict access
                   </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    <Shield className="h-3 w-3 inline mr-1" />
+                    IT users are protected from suspension and deletion
+                  </p>
                 </div>
                 <button
                   onClick={fetchMaintenanceStatus}
@@ -2614,6 +2638,10 @@ const ITDashboard = () => {
                   </p>
                   <p className="text-xs text-orange-600">
                     Manage and monitor suspended user accounts
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    <Shield className="h-3 w-3 inline mr-1" />
+                    IT users are protected from suspension and deletion
                   </p>
                 </div>
                 <button
