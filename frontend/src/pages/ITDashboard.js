@@ -40,6 +40,14 @@ import {
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../config/axios';
 import toast from 'react-hot-toast';
+import { 
+  trackITDashboardEvent, 
+  trackUserSession, 
+  trackPageView, 
+  trackFeatureUsage,
+  trackSystemHealth,
+  initializeClarity 
+} from '../utils/clarity';
 
 const ITDashboard = () => {
   const { user } = useAuth();
@@ -169,21 +177,42 @@ const ITDashboard = () => {
   
   const getCurrentView = () => {
     const path = location.pathname;
-    if (path.includes('/health')) return 'health';
-    if (path.includes('/users')) return 'users';
-    if (path.includes('/suspended-accounts')) return 'suspended-accounts';
-    if (path.includes('/security')) return 'security';
-    if (path.includes('/support')) return 'support';
-    if (path.includes('/metrics')) return 'metrics';
-    if (path.includes('/activity')) return 'activity';
-    if (path.includes('/locked-accounts')) return 'locked-accounts';
-    if (path.includes('/maintenance')) return 'maintenance';
-    if (path.includes('/system-lock')) return 'system-lock';
-    return 'overview';
+    let view = 'overview';
+    
+    if (path.includes('/health')) view = 'health';
+    else if (path.includes('/users')) view = 'users';
+    else if (path.includes('/suspended-accounts')) view = 'suspended-accounts';
+    else if (path.includes('/security')) view = 'security';
+    else if (path.includes('/support')) view = 'support';
+    else if (path.includes('/metrics')) view = 'metrics';
+    else if (path.includes('/activity')) view = 'activity';
+    else if (path.includes('/locked-accounts')) view = 'locked-accounts';
+    else if (path.includes('/maintenance')) view = 'maintenance';
+    else if (path.includes('/system-lock')) view = 'system-lock';
+    
+    // Track dashboard section access
+    trackFeatureUsage('dashboard_navigation', 'section_accessed', { section: view });
+    
+    return view;
   };
 
   useEffect(() => {
+    // Initialize Clarity tracking
+    const initClarity = () => {
+      setTimeout(() => {
+        if (initializeClarity()) {
+          trackUserSession(user?.role, user?.permissions || []);
+          trackPageView('IT Dashboard', { 
+            userRole: user?.role,
+            dashboardType: 'IT'
+          });
+        }
+      }, 1000); // Wait for Clarity to load
+    };
+
+    initClarity();
     fetchDashboardData();
+    
     // Refresh every 5 minutes (300 seconds) with silent updates
     const interval = setInterval(() => fetchDashboardData(false), 300000);
     return () => clearInterval(interval);
@@ -218,6 +247,13 @@ const ITDashboard = () => {
       // Fetch system health data
       const healthResponse = await apiClient.get('/api/it/system-health');
       setSystemHealth(healthResponse.data);
+      
+      // Track system health
+      trackSystemHealth('overall', healthResponse.data.serverStatus, {
+        uptime: healthResponse.data.uptime,
+        memoryUsage: healthResponse.data.memoryUsage,
+        cpuLoad: healthResponse.data.cpuLoad
+      });
 
       // Fetch user statistics
       const userResponse = await apiClient.get('/api/it/user-stats');
@@ -254,6 +290,8 @@ const ITDashboard = () => {
       if (showLoading) {
       toast.error('Failed to load dashboard data');
       }
+      // Track error
+      trackITDashboardEvent.errorOccurred('dashboard_data_fetch', error.message, 'overview');
     } finally {
       if (showLoading) {
       setLoading(false);
@@ -388,10 +426,20 @@ const ITDashboard = () => {
       
       const response = await apiClient.post(endpoint, data);
       setMaintenanceStatus(response.data.maintenanceMode);
+      
+      // Track maintenance mode toggle
+      if (enable) {
+        trackITDashboardEvent.maintenanceModeEnabled(message, estimatedDuration);
+      } else {
+        trackITDashboardEvent.maintenanceModeDisabled();
+      }
+      
       toast.success(response.data.message);
     } catch (error) {
       console.error('Error toggling maintenance mode:', error);
       toast.error(error.response?.data?.error || 'Failed to toggle maintenance mode');
+      // Track error
+      trackITDashboardEvent.errorOccurred('maintenance_toggle', error.message, 'maintenance');
     } finally {
       setMaintenanceLoading(false);
     }
@@ -435,10 +483,20 @@ const ITDashboard = () => {
       
       const response = await apiClient.post(endpoint, data);
       setSystemLockStatus(response.data.systemLock);
+      
+      // Track system lock toggle
+      if (enable) {
+        trackITDashboardEvent.systemLockEnabled(reason);
+      } else {
+        trackITDashboardEvent.systemLockDisabled();
+      }
+      
       toast.success(response.data.message);
     } catch (error) {
       console.error('Error toggling system lock:', error);
       toast.error(error.response?.data?.error || 'Failed to toggle system lock');
+      // Track error
+      trackITDashboardEvent.errorOccurred('system_lock_toggle', error.message, 'system-lock');
     } finally {
       setSystemLockLoading(false);
     }
@@ -456,24 +514,45 @@ const ITDashboard = () => {
           if (user) {
             setSelectedUser(user);
             setShowUserDetailsModal(true);
+            // Track user details view
+            trackFeatureUsage('user_management', 'view_details', { 
+              userId, 
+              userEmail: user.email,
+              userRole: user.role,
+              context: getCurrentView()
+            });
           }
           return;
         case 'activate':
+          response = await apiClient.patch(`/api/it/users/${userId}/status`, {
+            isActive: true
+          });
+          // Track user activation
+          trackITDashboardEvent.userActivated(userId, data.userEmail || 'unknown');
+          break;
         case 'deactivate':
           response = await apiClient.patch(`/api/it/users/${userId}/status`, {
-            isActive: action === 'activate'
+            isActive: false
           });
+          // Track user suspension
+          trackITDashboardEvent.userSuspended(userId, data.userEmail || 'unknown', data.reason || 'No reason provided');
           break;
         case 'updateRole':
           response = await apiClient.patch(`/api/it/users/${userId}/role`, {
             role: data.role
           });
+          // Track role change
+          trackITDashboardEvent.userRoleChanged(userId, data.oldRole || 'unknown', data.role);
           break;
         case 'unlock':
           response = await apiClient.patch(`/api/it/users/${userId}/unlock`);
+          // Track account unlock
+          trackFeatureUsage('user_management', 'unlock_account', { userId });
           break;
         case 'delete':
           response = await apiClient.delete(`/api/it/users/${userId}`);
+          // Track user deletion
+          trackFeatureUsage('user_management', 'delete_user', { userId });
           break;
         default:
           return;
@@ -490,6 +569,8 @@ const ITDashboard = () => {
     } catch (error) {
       console.error('Error performing user action:', error);
       toast.error(error.response?.data?.error || 'Failed to perform action');
+      // Track error
+      trackITDashboardEvent.errorOccurred('user_action', error.message, getCurrentView());
     }
   };
 
@@ -499,6 +580,8 @@ const ITDashboard = () => {
 
   const handleSearch = () => {
     fetchUsers(1);
+    // Track search
+    trackITDashboardEvent.searchPerformed(userFilters.search || '', users.length);
   };
 
   const getStatusColor = (status) => {
