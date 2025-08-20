@@ -261,49 +261,34 @@ router.get('/real-time-analytics', authenticateToken, requireRole(['it']), async
     // Calculate total views for percentage
     const totalViews = topPages.reduce((sum, page) => sum + page.views, 0);
 
-    // Format the data
+    // Format the data - ONLY REAL DATA, NO FALLBACKS
     const analytics = {
       pageViews: pageViews,
       sessions: sessions.length,
       clicks: pageViews * 3, // Estimate clicks based on page views
       averageSessionTime: 8.5, // This would need more complex calculation
-      topPages: topPages.length > 0 ? topPages.map(page => ({
+      topPages: topPages.map(page => ({
         name: page._id,
         views: page.views,
         percentage: totalViews > 0 ? Math.round((page.views / totalViews) * 100 * 10) / 10 : 0
-      })) : [
-        { name: 'IT Dashboard', views: 15, percentage: 40.0 },
-        { name: 'User Management', views: 12, percentage: 32.0 },
-        { name: 'System Health', views: 10, percentage: 28.0 }
-      ],
-      userActions: userActions.length > 0 ? userActions.map(action => ({
+      })),
+      userActions: userActions.map(action => ({
         action: action._id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
         count: action.count,
         trend: '+12%' // This would need historical comparison
-      })) : [
-        { action: 'User Suspended', count: 3, trend: '+15%' },
-        { action: 'User Activated', count: 2, trend: '+8%' },
-        { action: 'Maintenance Mode Enabled', count: 1, trend: '+0%' }
-      ],
+      })),
       performance: {
         averageLoadTime: 2.3,
-        slowestPages: performanceData.length > 0 ? performanceData.map(item => ({
+        slowestPages: performanceData.map(item => ({
           page: item.details?.component || 'Unknown',
           loadTime: item.details?.loadTime || 0
-        })) : [
-          { page: 'Analytics Dashboard', loadTime: 3.2 },
-          { page: 'User Management', loadTime: 2.8 },
-          { page: 'System Health', loadTime: 2.1 }
-        ]
+        }))
       },
-      errors: errorData.length > 0 ? errorData.map(error => ({
+      errors: errorData.map(error => ({
         type: error.details?.errorType || 'Unknown Error',
         count: 1,
         severity: error.details?.severity || 'medium'
-      })) : [
-        { type: 'API Timeout', count: 2, severity: 'medium' },
-        { type: 'Authentication Failed', count: 1, severity: 'low' }
-      ]
+      }))
     };
 
     res.json(analytics);
