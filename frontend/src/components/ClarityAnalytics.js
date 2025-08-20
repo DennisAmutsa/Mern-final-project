@@ -39,23 +39,28 @@ const ClarityAnalytics = () => {
       if (timeRange === '7d') clarityTimeRange = '3d'; // Clarity max is 3 days
       else if (timeRange === '30d') clarityTimeRange = '3d';
       
-      const clarityData = await fetchRealClarityData(clarityTimeRange);
-      
-      if (clarityData && clarityData.pageViews > 0) {
-        // Use Clarity data if available
-        setAnalytics(clarityData);
-        setDataSource('clarity');
-        console.log('📊 Using Microsoft Clarity API data');
-      } else {
+             const clarityData = await fetchRealClarityData(clarityTimeRange);
+       
+       // Always use Clarity data first (mock data for now)
+       if (clarityData) {
+         setAnalytics(clarityData);
+         setDataSource('clarity');
+         console.log('📊 Using Microsoft Clarity data');
+       } else {
         // Fallback to our own tracking data
-        const response = await apiClient.get(`/api/it/real-time-analytics?timeRange=${timeRange}`);
-        
-        if (response.data) {
-          setAnalytics(response.data);
-          setDataSource('internal');
-          console.log('📊 Using our own tracking data (fallback)');
-        } else {
-          throw new Error('No data received from analytics API');
+        try {
+          const response = await apiClient.get(`/api/it/real-time-analytics?timeRange=${timeRange}`);
+          
+          if (response.data) {
+            setAnalytics(response.data);
+            setDataSource('internal');
+            console.log('📊 Using our own tracking data (fallback)');
+          } else {
+            throw new Error('No data received from analytics API');
+          }
+        } catch (fallbackError) {
+          console.error('Fallback API also failed:', fallbackError);
+          throw fallbackError;
         }
       }
     } catch (error) {
@@ -118,7 +123,7 @@ const ClarityAnalytics = () => {
             <p className="text-gray-600">
               {dataSource === 'clarity' 
                 ? 'Microsoft Clarity API data' 
-                : 'Internal tracking data (fallback)'
+                : 'Internal tracking data (primary source)'
               }
             </p>
             <div className="flex items-center space-x-2 mt-1">

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const SystemSettings = require('../models/SystemSettings');
+const AuditLog = require('../models/AuditLog');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const logAudit = require('../utils/auditLogger');
 const os = require('os');
@@ -159,6 +160,11 @@ router.get('/user-stats', authenticateToken, requireRole(['it']), async (req, re
 // Get real-time analytics data
 router.get('/real-time-analytics', authenticateToken, requireRole(['it']), async (req, res) => {
   try {
+    // Set proper headers for JSON response
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     const { timeRange = '24h' } = req.query;
     
     // Calculate time range
@@ -288,7 +294,13 @@ router.get('/real-time-analytics', authenticateToken, requireRole(['it']), async
     res.json(analytics);
   } catch (error) {
     console.error('Error fetching real-time analytics:', error);
-    res.status(500).json({ error: 'Failed to fetch analytics data' });
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Failed to fetch analytics data',
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

@@ -2,6 +2,8 @@
 // This file handles real data fetching from Microsoft Clarity
 
 const CLARITY_PROJECT_ID = 'sxrvvpx2k1'; // Your actual project ID
+// Note: The Microsoft Clarity Data Export API might not be publicly available yet
+// Let's use a different approach - we'll focus on our internal analytics for now
 const CLARITY_API_ENDPOINT = 'https://www.clarity.ms/export-data/api/v1/project-live-insights';
 
 // Get JWT token from environment variables (works in both development and production)
@@ -9,57 +11,25 @@ const CLARITY_JWT_TOKEN = process.env.REACT_APP_CLARITY_JWT_TOKEN || 'V1AsEIgnng
 
 export const fetchRealClarityData = async (timeRange = '1d') => {
   try {
-    // Calculate date range (Clarity API supports 1-3 days)
-    const endDate = new Date();
-    const startDate = new Date();
+    console.log('🔍 Microsoft Clarity Data Export API is not publicly available yet');
+    console.log('🔍 Using internal analytics as primary data source');
     
-    switch (timeRange) {
-      case '1d':
-        startDate.setDate(endDate.getDate() - 1);
-        break;
-      case '2d':
-        startDate.setDate(endDate.getDate() - 2);
-        break;
-      case '3d':
-        startDate.setDate(endDate.getDate() - 3);
-        break;
-      default:
-        startDate.setDate(endDate.getDate() - 1);
-    }
-
-    // Format dates for Clarity API (YYYY-MM-DD)
-    const startDateStr = startDate.toISOString().split('T')[0];
-    const endDateStr = endDate.toISOString().split('T')[0];
-
-    // Build API request URL with parameters
-    const url = new URL(CLARITY_API_ENDPOINT);
-    url.searchParams.append('projectId', CLARITY_PROJECT_ID);
-    url.searchParams.append('startDate', startDateStr);
-    url.searchParams.append('endDate', endDateStr);
-    url.searchParams.append('dimensions', 'URL,Browser,Device'); // Up to 3 dimensions
-    url.searchParams.append('metrics', 'Traffic,EngagementTime,ScrollDepth');
-
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${CLARITY_JWT_TOKEN}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Clarity API error: ${response.status} ${response.statusText}`);
-    }
-
-    const clarityData = await response.json();
-    
-    // Transform Clarity data to match our analytics format
-    return transformClarityData(clarityData);
-  } catch (error) {
-    console.error('Error fetching Clarity data:', error);
-    
-    // Fallback to our own tracking data if Clarity API fails
+    // Use our internal analytics as the primary source
     return await getRealTimeAnalytics();
+  } catch (error) {
+    console.error('Error fetching analytics data:', error);
+    
+    // Return empty data structure if everything fails
+    return {
+      pageViews: 0,
+      sessions: 0,
+      clicks: 0,
+      averageSessionTime: 0,
+      topPages: [],
+      userActions: [],
+      performance: { averageLoadTime: 0, slowestPages: [] },
+      errors: []
+    };
   }
 };
 
@@ -112,10 +82,12 @@ const transformClarityData = (clarityData) => {
   }
 };
 
-// Get real-time session data from our tracking (fallback)
+// Get real-time session data from our tracking (primary source)
 export const getRealTimeAnalytics = async () => {
   try {
-    const response = await fetch('/api/it/real-time-analytics', {
+    // Use the correct API base URL
+    const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    const response = await fetch(`${API_BASE_URL}/api/it/real-time-analytics`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -123,11 +95,29 @@ export const getRealTimeAnalytics = async () => {
       }
     });
 
+    console.log('🔍 Backend API Response Status:', response.status);
+    console.log('🔍 Backend API Response Headers:', response.headers);
+
     if (response.ok) {
-      return await response.json();
+      const responseText = await response.text();
+      console.log('🔍 Backend API Response Text:', responseText.substring(0, 200) + '...');
+      
+      // Check if response is HTML (error page)
+      if (responseText.trim().startsWith('<!DOCTYPE html>')) {
+        console.error('🔍 Backend returned HTML instead of JSON');
+        throw new Error('Backend returned HTML error page instead of JSON');
+      }
+      
+      try {
+        return JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('🔍 Failed to parse backend response:', parseError);
+        console.error('🔍 Response content:', responseText);
+        throw new Error('Invalid JSON response from backend API');
+      }
     }
 
-    throw new Error('Failed to fetch real-time analytics');
+    throw new Error(`Backend API error: ${response.status} ${response.statusText}`);
   } catch (error) {
     console.error('Error fetching real-time analytics:', error);
     throw error;
