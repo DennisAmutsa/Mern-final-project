@@ -156,6 +156,76 @@ router.get('/user-stats', authenticateToken, requireRole(['it']), async (req, re
   }
 });
 
+// Get suspended accounts
+router.get('/suspended-accounts', authenticateToken, requireRole(['it']), async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = '', role = '', department = '' } = req.query;
+    
+    // Build query for suspended users
+    let query = { isActive: false };
+    
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { username: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    if (role) {
+      query.role = role;
+    }
+    
+    if (department) {
+      query.department = department;
+    }
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Get suspended users with pagination
+    const suspendedUsers = await User.find(query)
+      .select('-password') // Exclude password
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Get total count for pagination
+    const totalSuspendedUsers = await User.countDocuments(query);
+
+    // Get suspension statistics
+    const suspensionStats = await User.aggregate([
+      { $match: { isActive: false } },
+      {
+        $group: {
+          _id: '$role',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    res.json({
+      suspendedUsers,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalSuspendedUsers / limit),
+        totalSuspendedUsers,
+        itemsPerPage: parseInt(limit),
+        hasNext: skip + suspendedUsers.length < totalSuspendedUsers,
+        hasPrev: page > 1
+      },
+      stats: {
+        totalSuspended: totalSuspendedUsers,
+        byRole: suspensionStats
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching suspended accounts:', error);
+    res.status(500).json({ error: 'Failed to fetch suspended accounts' });
+  }
+});
+
 // Get all users for management
 router.get('/users', authenticateToken, requireRole(['it']), async (req, res) => {
   try {

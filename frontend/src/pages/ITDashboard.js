@@ -34,7 +34,8 @@ import {
   Bell,
   Search,
   Filter,
-  Wrench
+  Wrench,
+  X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../config/axios';
@@ -139,12 +140,38 @@ const ITDashboard = () => {
     reason: '',
     emergencyContact: ''
   });
-  const [systemLockBlockedAttempts, setSystemLockBlockedAttempts] = useState([]);
-
+    const [systemLockBlockedAttempts, setSystemLockBlockedAttempts] = useState([]);
+  
+  // Suspended Accounts state
+  const [suspendedAccounts, setSuspendedAccounts] = useState([]);
+  const [suspendedAccountsLoading, setSuspendedAccountsLoading] = useState(false);
+  const [suspendedAccountsPagination, setSuspendedAccountsPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalSuspendedUsers: 0,
+    itemsPerPage: 10,
+    hasNext: false,
+    hasPrev: false
+  });
+  const [suspendedAccountsStats, setSuspendedAccountsStats] = useState({
+    totalSuspended: 0,
+    byRole: []
+  });
+  const [suspendedAccountsFilters, setSuspendedAccountsFilters] = useState({
+    search: '',
+    role: '',
+    department: ''
+  });
+  
+  // User details modal state
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showUserDetailsModal, setShowUserDetailsModal] = useState(false);
+  
   const getCurrentView = () => {
     const path = location.pathname;
     if (path.includes('/health')) return 'health';
     if (path.includes('/users')) return 'users';
+    if (path.includes('/suspended-accounts')) return 'suspended-accounts';
     if (path.includes('/security')) return 'security';
     if (path.includes('/support')) return 'support';
     if (path.includes('/metrics')) return 'metrics';
@@ -165,6 +192,9 @@ const ITDashboard = () => {
   useEffect(() => {
     if (getCurrentView() === 'users') {
       fetchUsers();
+    }
+    if (getCurrentView() === 'suspended-accounts') {
+      fetchSuspendedAccounts();
     }
     if (getCurrentView() === 'locked-accounts') {
       fetchLockedAccounts();
@@ -285,6 +315,28 @@ const ITDashboard = () => {
     }
   };
 
+  const fetchSuspendedAccounts = async (page = 1) => {
+    try {
+      setSuspendedAccountsLoading(true);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '10',
+        ...suspendedAccountsFilters
+      });
+      
+      const response = await apiClient.get(`/api/it/suspended-accounts?${params}`);
+      setSuspendedAccounts(response.data.suspendedUsers);
+      setSuspendedAccountsPagination(response.data.pagination);
+      setSuspendedAccountsStats(response.data.stats);
+    } catch (error) {
+      console.error('Error fetching suspended accounts:', error);
+      toast.error('Failed to load suspended accounts');
+      setSuspendedAccounts([]);
+    } finally {
+      setSuspendedAccountsLoading(false);
+    }
+  };
+
   const fetchLockedAccounts = async () => {
     try {
       setLockedAccountsLoading(true);
@@ -397,6 +449,15 @@ const ITDashboard = () => {
       let response;
       
       switch (action) {
+        case 'view':
+          // Find the user in the current list (suspended accounts or regular users)
+          const userList = getCurrentView() === 'suspended-accounts' ? suspendedAccounts : users;
+          const user = userList.find(u => u._id === userId);
+          if (user) {
+            setSelectedUser(user);
+            setShowUserDetailsModal(true);
+          }
+          return;
         case 'activate':
         case 'deactivate':
           response = await apiClient.patch(`/api/it/users/${userId}/status`, {
@@ -419,7 +480,13 @@ const ITDashboard = () => {
       }
       
       toast.success(response.data.message);
-      fetchUsers(userPagination.currentPage);
+      
+      // Refresh the appropriate list based on current view
+      if (getCurrentView() === 'suspended-accounts') {
+        fetchSuspendedAccounts(suspendedAccountsPagination.currentPage);
+      } else {
+        fetchUsers(userPagination.currentPage);
+      }
     } catch (error) {
       console.error('Error performing user action:', error);
       toast.error(error.response?.data?.error || 'Failed to perform action');
@@ -2432,6 +2499,371 @@ const ITDashboard = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Suspended Accounts Tab */}
+      {getCurrentView() === 'suspended-accounts' && (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="bg-gradient-to-br from-orange-50 to-red-100 rounded-xl shadow-lg border border-orange-200">
+            <div className="px-6 py-4 border-b border-orange-200 bg-gradient-to-r from-orange-600 to-red-600 rounded-t-xl">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-white bg-opacity-20 rounded-lg">
+                  <UserX className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Suspended Accounts Management</h3>
+              </div>
+            </div>
+            <div className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm text-orange-700 mb-1">
+                    {suspendedAccountsLoading ? 'Loading...' : `Total Suspended: ${suspendedAccountsStats.totalSuspended}`}
+                  </p>
+                  <p className="text-xs text-orange-600">
+                    Manage and monitor suspended user accounts
+                  </p>
+                </div>
+                <button
+                  onClick={fetchSuspendedAccounts}
+                  disabled={suspendedAccountsLoading}
+                  className="flex items-center space-x-2 px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 text-sm disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-4 w-4 ${suspendedAccountsLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Search and Filters */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                <input
+                  type="text"
+                  placeholder="Search by name, email, or username..."
+                  value={suspendedAccountsFilters.search}
+                  onChange={(e) => {
+                    setSuspendedAccountsFilters(prev => ({ ...prev, search: e.target.value }));
+                    setTimeout(() => fetchSuspendedAccounts(1), 500);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                <select
+                  value={suspendedAccountsFilters.role}
+                  onChange={(e) => {
+                    setSuspendedAccountsFilters(prev => ({ ...prev, role: e.target.value }));
+                    fetchSuspendedAccounts(1);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                >
+                  <option value="">All Roles</option>
+                  <option value="admin">Admin</option>
+                  <option value="doctor">Doctor</option>
+                  <option value="nurse">Nurse</option>
+                  <option value="receptionist">Receptionist</option>
+                  <option value="pharmacist">Pharmacist</option>
+                  <option value="lab_technician">Lab Technician</option>
+                  <option value="it">IT</option>
+                  <option value="user">User</option>
+                  <option value="patient">Patient</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                <select
+                  value={suspendedAccountsFilters.department}
+                  onChange={(e) => {
+                    setSuspendedAccountsFilters(prev => ({ ...prev, department: e.target.value }));
+                    fetchSuspendedAccounts(1);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                >
+                  <option value="">All Departments</option>
+                  <option value="Emergency">Emergency</option>
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Neurology">Neurology</option>
+                  <option value="Pediatrics">Pediatrics</option>
+                  <option value="Orthopedics">Orthopedics</option>
+                  <option value="General Medicine">General Medicine</option>
+                  <option value="Surgery">Surgery</option>
+                  <option value="ICU">ICU</option>
+                  <option value="Pharmacy">Pharmacy</option>
+                  <option value="Administration">Administration</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-orange-600">Total Suspended</p>
+                    <p className="text-2xl font-bold text-orange-800">{suspendedAccountsStats.totalSuspended}</p>
+                  </div>
+                  <UserX className="h-8 w-8 text-orange-600" />
+                </div>
+              </div>
+              {suspendedAccountsStats.byRole.map((role, index) => (
+                <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">{role._id || 'Unknown'}</p>
+                      <p className="text-2xl font-bold text-gray-800">{role.count}</p>
+                    </div>
+                    <UserX className="h-8 w-8 text-gray-600" />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Suspended Accounts List */}
+            <div className="bg-white rounded-lg border border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">Suspended Accounts</h3>
+              </div>
+              <div className="overflow-x-auto">
+                {suspendedAccountsLoading ? (
+                  <div className="p-6 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading suspended accounts...</p>
+                  </div>
+                ) : suspendedAccounts.length === 0 ? (
+                  <div className="p-6 text-center">
+                    <UserX className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">No suspended accounts found</p>
+                  </div>
+                ) : (
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Suspended Since</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {suspendedAccounts.map((user) => (
+                        <tr key={user._id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 h-10 w-10">
+                                <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                                  <UserX className="h-5 w-5 text-orange-600" />
+                                </div>
+                              </div>
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {user.firstName} {user.lastName}
+                                </div>
+                                <div className="text-sm text-gray-500">{user.email}</div>
+                                <div className="text-xs text-gray-400">@{user.username}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              user.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                              user.role === 'doctor' ? 'bg-blue-100 text-blue-800' :
+                              user.role === 'nurse' ? 'bg-green-100 text-green-800' :
+                              user.role === 'it' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {user.department || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {user.updatedAt ? new Date(user.updatedAt).toLocaleDateString() : 'Unknown'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => handleUserAction(user._id, 'activate')}
+                              className="text-green-600 hover:text-green-900 mr-3"
+                            >
+                              Activate
+                            </button>
+                            <button
+                              onClick={() => handleUserAction(user._id, 'view')}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Pagination */}
+              {suspendedAccountsPagination.totalPages > 1 && (
+                <div className="px-6 py-4 border-t border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-700">
+                      Showing {((suspendedAccountsPagination.currentPage - 1) * suspendedAccountsPagination.itemsPerPage) + 1} to{' '}
+                      {Math.min(suspendedAccountsPagination.currentPage * suspendedAccountsPagination.itemsPerPage, suspendedAccountsPagination.totalSuspendedUsers)} of{' '}
+                      {suspendedAccountsPagination.totalSuspendedUsers} results
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => fetchSuspendedAccounts(suspendedAccountsPagination.currentPage - 1)}
+                        disabled={!suspendedAccountsPagination.hasPrev}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <span className="px-3 py-1 text-sm text-gray-700">
+                        Page {suspendedAccountsPagination.currentPage} of {suspendedAccountsPagination.totalPages}
+                      </span>
+                      <button
+                        onClick={() => fetchSuspendedAccounts(suspendedAccountsPagination.currentPage + 1)}
+                        disabled={!suspendedAccountsPagination.hasNext}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Details Modal */}
+      {showUserDetailsModal && selectedUser && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">User Details</h3>
+                <button
+                  onClick={() => {
+                    setShowUserDetailsModal(false);
+                    setSelectedUser(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Name</label>
+                  <p className="mt-1 text-sm text-gray-900">{selectedUser.firstName} {selectedUser.lastName}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <p className="mt-1 text-sm text-gray-900">{selectedUser.email}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Username</label>
+                  <p className="mt-1 text-sm text-gray-900">@{selectedUser.username}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Role</label>
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 ${
+                    selectedUser.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                    selectedUser.role === 'doctor' ? 'bg-blue-100 text-blue-800' :
+                    selectedUser.role === 'nurse' ? 'bg-green-100 text-green-800' :
+                    selectedUser.role === 'it' ? 'bg-red-100 text-red-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {selectedUser.role}
+                  </span>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Department</label>
+                  <p className="mt-1 text-sm text-gray-900">{selectedUser.department || 'N/A'}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Status</label>
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 ${
+                    selectedUser.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {selectedUser.isActive ? 'Active' : 'Suspended'}
+                  </span>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Employee ID</label>
+                  <p className="mt-1 text-sm text-gray-900">{selectedUser.employeeId || 'N/A'}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Created</label>
+                  <p className="mt-1 text-sm text-gray-900">
+                    {selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleDateString() : 'Unknown'}
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Last Updated</label>
+                  <p className="mt-1 text-sm text-gray-900">
+                    {selectedUser.updatedAt ? new Date(selectedUser.updatedAt).toLocaleDateString() : 'Unknown'}
+                  </p>
+                </div>
+                
+                {selectedUser.contactInfo && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Contact Info</label>
+                    <p className="mt-1 text-sm text-gray-900">
+                      Phone: {selectedUser.contactInfo.phone || 'N/A'}
+                    </p>
+                    {selectedUser.contactInfo.address && (
+                      <p className="mt-1 text-sm text-gray-900">
+                        Address: {selectedUser.contactInfo.address.street || ''} {selectedUser.contactInfo.address.city || ''} {selectedUser.contactInfo.address.state || ''}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowUserDetailsModal(false);
+                    setSelectedUser(null);
+                  }}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                >
+                  Close
+                </button>
+                {!selectedUser.isActive && (
+                  <button
+                    onClick={() => {
+                      handleUserAction(selectedUser._id, 'activate');
+                      setShowUserDetailsModal(false);
+                      setSelectedUser(null);
+                    }}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    Activate User
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

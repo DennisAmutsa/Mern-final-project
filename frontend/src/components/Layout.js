@@ -32,7 +32,8 @@ import {
   Microscope,
   MessageSquare,
   Lock,
-  Wrench
+  Wrench,
+  UserX
 } from 'lucide-react';
 
 const adminGroups = [
@@ -159,10 +160,11 @@ const Layout = () => {
         return [
           ...baseNavigation,
           { name: 'System Health', href: '/it-dashboard/health', icon: Database },
-          { name: 'User Management', href: '/it-dashboard/users', icon: Users },
-          { name: 'Locked Accounts', href: '/it-dashboard/locked-accounts', icon: Lock },
-          { name: 'Maintenance Mode', href: '/it-dashboard/maintenance', icon: Wrench },
-          { name: 'System Lock', href: '/it-dashboard/system-lock', icon: AlertTriangle },
+                  { name: 'User Management', href: '/it-dashboard/users', icon: Users },
+        { name: 'Suspended Accounts', href: '/it-dashboard/suspended-accounts', icon: UserX },
+        { name: 'Locked Accounts', href: '/it-dashboard/locked-accounts', icon: Lock },
+        { name: 'Maintenance Mode', href: '/it-dashboard/maintenance', icon: Wrench },
+        { name: 'System Lock', href: '/it-dashboard/system-lock', icon: AlertTriangle },
           { name: 'Security Alerts', href: '/it-dashboard/security', icon: Shield },
           { name: 'Support Tickets', href: '/it-dashboard/support', icon: MessageSquare },
           { name: 'System Metrics', href: '/it-dashboard/metrics', icon: BarChart3 },
