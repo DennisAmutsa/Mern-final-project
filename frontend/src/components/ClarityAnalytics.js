@@ -12,7 +12,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import apiClient from '../config/axios';
-import { getRealTimeAnalytics } from '../utils/clarityAPI';
+import { fetchRealClarityData, getRealTimeAnalytics } from '../utils/clarityAPI';
 
 const ClarityAnalytics = () => {
   const [analytics, setAnalytics] = useState({
@@ -28,23 +28,40 @@ const ClarityAnalytics = () => {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('24h');
   const [activeTab, setActiveTab] = useState('overview');
+  const [dataSource, setDataSource] = useState('clarity'); // 'clarity' or 'internal'
 
-  // Fetch real analytics data from our backend
+  // Fetch real analytics data from Microsoft Clarity API
   const fetchAnalytics = async () => {
     setLoading(true);
     try {
-      // Get real data from our backend API
-      const response = await apiClient.get(`/api/it/real-time-analytics?timeRange=${timeRange}`);
+      // Try to get data from Microsoft Clarity API first
+      let clarityTimeRange = '1d';
+      if (timeRange === '7d') clarityTimeRange = '3d'; // Clarity max is 3 days
+      else if (timeRange === '30d') clarityTimeRange = '3d';
       
-      if (response.data) {
-        setAnalytics(response.data);
+      const clarityData = await fetchRealClarityData(clarityTimeRange);
+      
+      if (clarityData && clarityData.pageViews > 0) {
+        // Use Clarity data if available
+        setAnalytics(clarityData);
+        setDataSource('clarity');
+        console.log('📊 Using Microsoft Clarity API data');
       } else {
-        throw new Error('No data received from analytics API');
+        // Fallback to our own tracking data
+        const response = await apiClient.get(`/api/it/real-time-analytics?timeRange=${timeRange}`);
+        
+        if (response.data) {
+          setAnalytics(response.data);
+          setDataSource('internal');
+          console.log('📊 Using our own tracking data (fallback)');
+        } else {
+          throw new Error('No data received from analytics API');
+        }
       }
     } catch (error) {
-      console.error('Error fetching real analytics:', error);
+      console.error('Error fetching analytics:', error);
       
-      // Fallback to mock data if API fails
+      // Final fallback to empty data
       const fallbackData = {
         pageViews: 0,
         sessions: 0,
@@ -96,14 +113,21 @@ const ClarityAnalytics = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h2>
-          <p className="text-gray-600">Real-time analytics from your IT Dashboard usage</p>
-          <div className="flex items-center space-x-2 mt-1">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-sm text-green-600 font-medium">Live Data</span>
+                  <div>
+            <h2 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h2>
+            <p className="text-gray-600">
+              {dataSource === 'clarity' 
+                ? 'Microsoft Clarity API data' 
+                : 'Internal tracking data (fallback)'
+              }
+            </p>
+            <div className="flex items-center space-x-2 mt-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-green-600 font-medium">
+                {dataSource === 'clarity' ? 'Clarity API' : 'Internal Data'}
+              </span>
+            </div>
           </div>
-        </div>
         <div className="flex items-center space-x-4">
           <select
             value={timeRange}
