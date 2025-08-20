@@ -1434,6 +1434,15 @@ router.post('/maintenance/enable', authenticateToken, requireRole(['it']), async
     const { message, estimatedDuration } = req.body;
     const settings = await SystemSettings.getInstance();
     
+    // Check if system lock is currently enabled
+    if (settings.systemLock.enabled) {
+      return res.status(409).json({
+        error: 'Cannot enable maintenance mode',
+        message: 'System lock is currently active. Please disable system lock before enabling maintenance mode.',
+        details: 'System lock takes priority over maintenance mode for security reasons.'
+      });
+    }
+    
     settings.maintenanceMode.enabled = true;
     settings.maintenanceMode.activatedAt = new Date();
     settings.maintenanceMode.activatedBy = req.user._id;
@@ -1577,6 +1586,15 @@ router.post('/system-lock/enable', authenticateToken, requireRole(['it']), async
     let settings = await SystemSettings.findOne();
     if (!settings) {
       settings = new SystemSettings();
+    }
+    
+    // Check if maintenance mode is currently enabled
+    if (settings.maintenanceMode.enabled) {
+      return res.status(409).json({
+        error: 'Cannot enable system lock',
+        message: 'Maintenance mode is currently active. Please disable maintenance mode before enabling system lock.',
+        details: 'System lock will override maintenance mode. Disable maintenance mode first for clarity.'
+      });
     }
     
     // Always use the fixed emergency contact

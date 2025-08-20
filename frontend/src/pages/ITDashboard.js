@@ -439,7 +439,22 @@ const ITDashboard = () => {
       toast.success(response.data.message);
     } catch (error) {
       console.error('Error toggling maintenance mode:', error);
-      toast.error(error.response?.data?.error || 'Failed to toggle maintenance mode');
+      
+      // Handle specific conflict errors
+      if (error.response?.status === 409) {
+        toast.error(error.response.data.message || 'Cannot enable maintenance mode while system lock is active', {
+          duration: 6000,
+          style: {
+            background: '#fef3c7',
+            border: '1px solid #fbbf24',
+            color: '#d97706',
+            minWidth: '400px'
+          }
+        });
+      } else {
+        toast.error(error.response?.data?.error || 'Failed to toggle maintenance mode');
+      }
+      
       // Track error
       trackITDashboardEvent.errorOccurred('maintenance_toggle', error.message, 'maintenance');
     } finally {
@@ -519,7 +534,22 @@ const ITDashboard = () => {
       toast.success(response.data.message);
     } catch (error) {
       console.error('Error toggling system lock:', error);
-      toast.error(error.response?.data?.error || 'Failed to toggle system lock');
+      
+      // Handle specific conflict errors
+      if (error.response?.status === 409) {
+        toast.error(error.response.data.message || 'Cannot enable system lock while maintenance mode is active', {
+          duration: 6000,
+          style: {
+            background: '#fef3c7',
+            border: '1px solid #fbbf24',
+            color: '#d97706',
+            minWidth: '400px'
+          }
+        });
+      } else {
+        toast.error(error.response?.data?.error || 'Failed to toggle system lock');
+      }
+      
       // Track error
       trackITDashboardEvent.errorOccurred('system_lock_toggle', error.message, 'system-lock');
     } finally {
@@ -2327,6 +2357,22 @@ const ITDashboard = () => {
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                   <h4 className="text-lg font-bold text-blue-600 mb-4">System Maintenance Control</h4>
                   
+                  {/* Warning when system lock is active */}
+                  {systemLockStatus?.enabled && (
+                    <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                      <div className="flex items-start space-x-3">
+                        <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
+                        <div>
+                          <h5 className="font-medium text-orange-800">System Lock Active</h5>
+                          <p className="text-sm text-orange-700 mt-1">
+                            Maintenance mode cannot be enabled while system lock is active. 
+                            Please disable system lock first to enable maintenance mode.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {!maintenanceStatus.enabled ? (
                     <div className="space-y-4">
                       <div>
@@ -2366,10 +2412,10 @@ const ITDashboard = () => {
                           handleMaintenanceToggle(true, reason, duration);
                           setMaintenanceForm({ reason: '', duration: '' });
                         }}
-                        disabled={maintenanceLoading}
-                        className="w-full px-4 py-3 bg-gray-300 text-gray-600 rounded-md hover:bg-gray-400 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 transition-colors font-medium"
+                        disabled={maintenanceLoading || systemLockStatus?.enabled}
+                        className="w-full px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-colors font-medium"
                       >
-                        Enable Maintenance Mode
+                        {systemLockStatus?.enabled ? 'System Lock Active - Cannot Enable' : 'Enable Maintenance Mode'}
                       </button>
                     </div>
                   ) : (
@@ -2555,6 +2601,22 @@ const ITDashboard = () => {
                     <div className="bg-white rounded-lg border border-gray-200 p-6">
                       <h4 className="text-lg font-bold text-red-600 mb-4">System Lock Control</h4>
                       
+                      {/* Warning when maintenance mode is active */}
+                      {maintenanceStatus?.enabled && (
+                        <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                          <div className="flex items-start space-x-3">
+                            <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
+                            <div>
+                              <h5 className="font-medium text-orange-800">Maintenance Mode Active</h5>
+                              <p className="text-sm text-orange-700 mt-1">
+                                System lock will override maintenance mode. Please disable maintenance mode first 
+                                for clarity before enabling system lock.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
                       {!systemLockStatus?.enabled ? (
                         <div className="space-y-4">
                           <div>
@@ -2594,10 +2656,10 @@ const ITDashboard = () => {
                               handleSystemLockToggle(true, reason, emergencyContact);
                               setSystemLockForm({ reason: '', emergencyContact: '' });
                             }}
-                            disabled={systemLockLoading}
+                            disabled={systemLockLoading || maintenanceStatus?.enabled}
                             className="w-full px-4 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 transition-colors font-medium"
                           >
-                            Enable System Lock
+                            {maintenanceStatus?.enabled ? 'Maintenance Mode Active - Disable First' : 'Enable System Lock'}
                           </button>
                         </div>
                       ) : (
