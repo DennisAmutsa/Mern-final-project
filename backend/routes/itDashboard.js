@@ -116,18 +116,25 @@ router.get('/user-stats', authenticateToken, requireRole(['it']), async (req, re
       }
     ]);
 
-    // Get recent logins (last 24 hours) - using createdAt as proxy for lastLogin
-    const recentLogins = await User.countDocuments({
-      createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
-    });
-
     // Get users created in last 7 days
     const newUsersThisWeek = await User.countDocuments({
       createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
     });
 
-    // Calculate failed attempts based on inactive users (simplified)
-    const failedAttempts = Math.floor(inactiveUsers * 0.3);
+    // Get REAL recent logins from audit logs (last 24 hours)
+    const AuditLog = require('../models/AuditLog');
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    const recentLogins = await AuditLog.countDocuments({
+      action: 'LOGIN_SUCCESS',
+      createdAt: { $gte: twentyFourHoursAgo }
+    });
+
+    // Get REAL failed login attempts from audit logs (last 24 hours)
+    const failedAttempts = await AuditLog.countDocuments({
+      action: 'LOGIN_FAILED',
+      createdAt: { $gte: twentyFourHoursAgo }
+    });
 
     const userStats = {
       totalUsers,
